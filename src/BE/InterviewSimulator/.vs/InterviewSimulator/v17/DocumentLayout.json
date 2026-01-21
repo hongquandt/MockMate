@@ -1,0 +1,71 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "D:\\Ky7\\EXE\\ProjectEXE\\src\\BE\\InterviewSimulator\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{E185B49B-5628-4CB5-8655-495622FC42DC}|InterviewSimulator\\InterviewSimulator.csproj|d:\\ky7\\exe\\projectexe\\src\\be\\interviewsimulator\\interviewsimulator\\appsettings.development.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
+      "RelativeMoniker": "D:0:0:{E185B49B-5628-4CB5-8655-495622FC42DC}|InterviewSimulator\\InterviewSimulator.csproj|solutionrelative:interviewsimulator\\appsettings.development.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 6,
+          "Children": [
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{1c64b9c2-e352-428e-a56d-0ace190b99a6}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{3ae79031-e1bc-11d0-8f78-00a0c9110057}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:1:0:{e8b06f52-6d01-11d2-aa7d-00c04f990343}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{d78612c7-9962-4b83-95d9-268046dad23a}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{1c4feeaa-4718-4aa9-859d-94ce25d182ba}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{c9c0ae26-aa77-11d2-b3f0-0000f87570ee}"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "appsettings.Development.json",
+              "DocumentMoniker": "D:\\Ky7\\EXE\\ProjectEXE\\src\\BE\\InterviewSimulator\\InterviewSimulator\\appsettings.Development.json",
+              "RelativeDocumentMoniker": "InterviewSimulator\\appsettings.Development.json",
+              "ToolTip": "D:\\Ky7\\EXE\\ProjectEXE\\src\\BE\\InterviewSimulator\\InterviewSimulator\\appsettings.Development.json",
+              "RelativeToolTip": "InterviewSimulator\\appsettings.Development.json",
+              "ViewState": "AgIAAB4AAAAAAAAAAAAAAAIAAAA6AAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
+              "WhenOpened": "2026-01-13T15:47:18.917Z",
+              "EditorCaption": ""
+            }
+          ]
+        },
+        {
+          "DockedWidth": 64,
+          "SelectedChildIndex": -1,
+          "Children": [
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{fbcae063-e2c0-4ab1-a516-996ea3dafb72}"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
