@@ -2,24 +2,39 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import logoImg from '../assets/img/z7430605225117_544001c3f21b8fc1cb5af11cb46703c0.jpg';
 
-const LoginPage = () => {
-  const [formData, setFormData] = useState({
-    email: '',
-    password: ''
-  });
-  const [showPassword, setShowPassword] = useState(false);
+  import { authService } from '../services/api';
+  import { useNavigate } from 'react-router-dom';
 
-  const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
+  const LoginPage = () => {
+    const navigate = useNavigate();
+    const [formData, setFormData] = useState({
+      email: '',
+      password: ''
     });
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    console.log('Login:', formData);
-  };
+    const [showPassword, setShowPassword] = useState(false);
+    const [error, setError] = useState('');
+    const [loading, setLoading] = useState(false);
+  
+    const handleChange = (e) => {
+      setFormData({
+        ...formData,
+        [e.target.name]: e.target.value
+      });
+    };
+  
+    const handleSubmit = async (e) => {
+      e.preventDefault();
+      setError('');
+      setLoading(true);
+      try {
+        await authService.login(formData.email, formData.password);
+        navigate('/'); // Redirect to home
+      } catch (err) {
+        setError(err.response?.data?.message || 'Login failed. Please check your credentials.');
+      } finally {
+        setLoading(false);
+      }
+    };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 flex items-center justify-center p-6">
@@ -34,6 +49,13 @@ const LoginPage = () => {
               Nền tảng luyện tập phỏng vấn thông minh
             </p>
           </div>
+
+          {error && (
+            <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg text-sm flex items-center gap-2">
+              <span className="material-symbols-outlined text-lg">error</span>
+              {error}
+            </div>
+          )}
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-5">
@@ -96,9 +118,10 @@ const LoginPage = () => {
             {/* Submit Button */}
             <button
               type="submit"
-              className="w-full bg-primary hover:bg-primary-dark text-white font-bold py-3 rounded-xl transition-colors shadow-lg shadow-primary/20"
+              disabled={loading}
+              className="w-full bg-primary hover:bg-primary-dark text-white font-bold py-3 rounded-xl transition-colors shadow-lg shadow-primary/20 disabled:opacity-70 disabled:cursor-not-allowed"
             >
-              Log In
+              {loading ? 'Đang đăng nhập...' : 'Log In'}
             </button>
           </form>
 

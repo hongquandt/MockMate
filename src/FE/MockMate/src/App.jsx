@@ -6,6 +6,7 @@ import RegisterPage from './pages/RegisterPage'
 import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import VerifyOtpPage from './pages/VerifyOtpPage'
 import ResetPasswordPage from './pages/ResetPasswordPage'
+import UserProfilePage from './pages/UserProfilePage'
 
 function App() {
   return (
@@ -17,6 +18,7 @@ function App() {
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/verify-otp" element={<VerifyOtpPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
+        <Route path="/profile" element={<UserProfilePage />} />
       </Routes>
     </Router>
   )

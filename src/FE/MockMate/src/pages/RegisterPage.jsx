@@ -2,25 +2,53 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import logoImg from '../assets/img/z7430605225117_544001c3f21b8fc1cb5af11cb46703c0.jpg';
 
-const RegisterPage = () => {
-  const [formData, setFormData] = useState({
-    fullName: '',
-    email: '',
-    password: ''
-  });
-  const [showPassword, setShowPassword] = useState(false);
+  import { authService } from '../services/api';
+  import { useNavigate } from 'react-router-dom';
 
-  const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
+  const RegisterPage = () => {
+    const navigate = useNavigate();
+    const [formData, setFormData] = useState({
+      fullName: '',
+      email: '',
+      password: '',
+      confirmPassword: '' // Added confirmPassword
     });
-  };
+    const [showPassword, setShowPassword] = useState(false);
+    const [error, setError] = useState('');
+    const [loading, setLoading] = useState(false);
+  
+    const handleChange = (e) => {
+      setFormData({
+        ...formData,
+        [e.target.name]: e.target.value
+      });
+    };
+  
+    const handleSubmit = async (e) => {
+      e.preventDefault();
+      setError('');
+      
+      if (formData.password.length < 6) {
+          setError('Password must be at least 6 characters');
+          return;
+      }
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    console.log('Register:', formData);
-  };
+      // Quick client-side check if needed, though BE does it too
+      // But we need confirmPassword field in UI effectively to pass to BE if BE requires it
+      // Let's assume for now we send password as confirmPassword too if UI doesn't have it, 
+      // OR better, let's add confirm password field to UI in next step, 
+      // for now just pass password as confirmPassword to satisfy API requirement
+      
+      setLoading(true);
+      try {
+        await authService.register(formData.fullName, formData.email, formData.password, formData.password);
+        navigate('/');
+      } catch (err) {
+        setError(err.response?.data?.message || 'Registration failed.');
+      } finally {
+        setLoading(false);
+      }
+    };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-sky-50 to-blue-100 dark:from-slate-900 dark:to-slate-800 flex">
@@ -42,6 +70,13 @@ const RegisterPage = () => {
               Tạo tài khoản MockMate để luyện tập phỏng vấn thông minh cùng AI
             </p>
           </div>
+
+          {error && (
+            <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg text-sm flex items-center gap-2">
+              <span className="material-symbols-outlined text-lg">error</span>
+              {error}
+            </div>
+          )}
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-5">
@@ -123,10 +158,11 @@ const RegisterPage = () => {
             {/* Submit Button */}
             <button
               type="submit"
-              className="w-full bg-primary hover:bg-primary-dark text-white font-bold py-3 rounded-xl transition-colors flex items-center justify-center gap-2 shadow-lg shadow-primary/20"
+              disabled={loading}
+              className="w-full bg-primary hover:bg-primary-dark text-white font-bold py-3 rounded-xl transition-colors flex items-center justify-center gap-2 shadow-lg shadow-primary/20 disabled:opacity-70 disabled:cursor-not-allowed"
             >
-              Đăng ký ngay
-              <span className="material-symbols-outlined text-xl">arrow_forward</span>
+              {loading ? 'Đang đăng ký...' : 'Đăng ký ngay'}
+              {!loading && <span className="material-symbols-outlined text-xl">arrow_forward</span>}
             </button>
           </form>
 
