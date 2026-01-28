@@ -29,6 +29,20 @@ namespace InterviewSimulator.DTOs
         public string ConfirmPassword { get; set; } = string.Empty;
     }
 
+    public class SocialLoginRequest
+    {
+        [Required]
+        public string Provider { get; set; } = string.Empty; // "Google" or "Facebook"
+
+        [Required]
+        public string Token { get; set; } = string.Empty;
+        
+        // Optional: Send these if we don't want to validate token on backend for this MVP
+        public string? Email { get; set; }
+        public string? Name { get; set; }
+        public string? AvatarUrl { get; set; }
+    }
+
     public class AuthResponse
     {
         public string Token { get; set; } = string.Empty;

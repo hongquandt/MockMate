@@ -58,6 +58,15 @@ export const authService = {
     return response.data;
   },
 
+  socialLogin: async (data) => {
+    const response = await api.post('/auth/social-login', data);
+    if (response.data.token) {
+      localStorage.setItem('token', response.data.token);
+      localStorage.setItem('user', JSON.stringify(response.data.user));
+    }
+    return response.data;
+  },
+
   forgotPassword: async (email) => {
     const response = await api.post('/auth/forgot-password', { email });
     return response.data;

@@ -81,5 +81,19 @@ namespace InterviewSimulator.Controllers
                 return BadRequest(new { message = ex.Message });
             }
         }
+
+        [HttpPost("social-login")]
+        public async Task<ActionResult<AuthResponse>> SocialLogin(SocialLoginRequest request)
+        {
+            try
+            {
+                var response = await _authService.SocialLoginAsync(request);
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
     }
 }

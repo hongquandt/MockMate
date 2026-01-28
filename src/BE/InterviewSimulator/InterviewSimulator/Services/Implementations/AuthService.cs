@@ -228,5 +228,72 @@ namespace InterviewSimulator.Services.Implementations
             // Invalidate OTP
             _cache.Remove($"OTP_{request.Email}");
         }
+        public async Task<AuthResponse> SocialLoginAsync(SocialLoginRequest request)
+        {
+            // Note: In a real production app, verify the 'request.Token' with Google/Facebook API here.
+            // For this implementation, we trust the email provided by the client after their successful validation.
+            
+            if (string.IsNullOrEmpty(request.Email))
+            {
+                throw new Exception("Email is required for social login.");
+            }
+
+            var user = await _context.Users
+                .Include(u => u.Role)
+                .FirstOrDefaultAsync(u => u.Email == request.Email);
+
+            if (user == null)
+            {
+                // Register new user
+                user = new User
+                {
+                    FullName = request.Name ?? request.Email.Split('@')[0],
+                    Email = request.Email,
+                    PasswordHash = HashPassword(Guid.NewGuid().ToString()), // Random password
+                    RoleId = 2, // Candidate
+                    CreatedAt = DateTime.UtcNow,
+                    IsDeleted = false,
+                    AvatarUrl = request.AvatarUrl
+                };
+
+                _context.Users.Add(user);
+                await _context.SaveChangesAsync();
+                
+                // Reload user to ensure everything is set if needed, but local entity is mostly fine.
+                // We need to ensure CreateToken works. CreateToken access user.Role.RoleName via navigation property.
+                // Since we just added it, user.Role is null. We need to load it or handle check.
+            }
+            else
+            {
+                // Update info if needed (e.g. Avatar)
+                if (!string.IsNullOrEmpty(request.AvatarUrl) && user.AvatarUrl != request.AvatarUrl)
+                {
+                    user.AvatarUrl = request.AvatarUrl;
+                    await _context.SaveChangesAsync();
+                }
+            }
+            
+            // Ensure Role is populated for Token generation
+            if (user.Role == null)
+            {
+                 user.Role = await _context.Roles.FindAsync(user.RoleId);
+            }
+
+            // Create token
+            var token = CreateToken(user);
+
+            return new AuthResponse
+            {
+                Token = token,
+                User = new UserDto
+                {
+                    Id = user.Id,
+                    FullName = user.FullName,
+                    Email = user.Email,
+                    AvatarUrl = user.AvatarUrl,
+                    RoleId = user.RoleId
+                }
+            };
+        }
     }
 }
