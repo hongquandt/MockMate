@@ -2,6 +2,8 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
+using System.Net.Http;
+using System.Text.Json;
 using InterviewSimulator.DTOs;
 using InterviewSimulator.Models;
 using InterviewSimulator.Services.Interfaces;
@@ -32,6 +34,12 @@ namespace InterviewSimulator.Services.Implementations
 
         public async Task<AuthResponse> LoginAsync(LoginRequest request)
         {
+            // Verify Captcha
+            if (string.IsNullOrEmpty(request.CaptchaToken) || !await VerifyCaptchaAsync(request.CaptchaToken))
+            {
+                throw new Exception("Invalid Captcha. Please try again.");
+            }
+
             var user = await _context.Users
                 .Include(u => u.Role)
                 .FirstOrDefaultAsync(u => u.Email == request.Email && (u.IsDeleted == false || u.IsDeleted == null));
@@ -294,6 +302,36 @@ namespace InterviewSimulator.Services.Implementations
                     RoleId = user.RoleId
                 }
             };
+        }
+
+        private async Task<bool> VerifyCaptchaAsync(string token)
+        {
+            if (string.IsNullOrEmpty(token)) return false;
+
+            try 
+            {
+                using var client = new HttpClient();
+                // Google Secret Key provided by user
+                var secretKey = "6LedT1osAAAAAPb3srMxtehdbJnIcKPy13b_Jwjc"; 
+                var response = await client.PostAsync($"https://www.google.com/recaptcha/api/siteverify?secret={secretKey}&response={token}", null);
+                
+                if (!response.IsSuccessStatusCode) return false;
+
+                var jsonString = await response.Content.ReadAsStringAsync();
+                
+                using (var doc = JsonDocument.Parse(jsonString))
+                {
+                     if (doc.RootElement.TryGetProperty("success", out var successElement))
+                     {
+                         return successElement.GetBoolean();
+                     }
+                     return false;
+                }
+            }
+            catch 
+            {
+                return false;
+            }
         }
     }
 }

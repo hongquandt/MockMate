@@ -259,11 +259,25 @@ const DashboardPage = () => {
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                         {/* PDF Viewer */}
                         <div className="h-[600px] bg-slate-100 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
-                            <iframe 
-                                src={uploadUrl} 
+                            <object 
+                                data={uploadUrl} 
+                                type="application/pdf" 
                                 className="w-full h-full"
                                 title="PDF Preview"
-                            ></iframe>
+                            >
+                                <div className="flex flex-col items-center justify-center h-full text-slate-500 gap-2 p-4 text-center">
+                                    <span className="material-symbols-outlined text-4xl mb-2 text-slate-400">sentiment_dissatisfied</span>
+                                    <p>Trình duyệt của bạn không hỗ trợ xem PDF trực tiếp trong khung này.</p>
+                                    <a 
+                                        href={uploadUrl} 
+                                        target="_blank" 
+                                        rel="noopener noreferrer" 
+                                        className="text-primary font-bold hover:underline"
+                                    >
+                                        Nhấn vào đây để xem hoặc tải xuống file PDF
+                                    </a>
+                                </div>
+                            </object>
                         </div>
 
                         {/* AI Analysis Result */}

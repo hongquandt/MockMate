@@ -4,6 +4,7 @@ import logoImg from '../assets/img/z7430605225117_544001c3f21b8fc1cb5af11cb46703
 import { authService } from '../services/api';
 import { useGoogleLogin } from '@react-oauth/google';
 import axios from 'axios';
+import ReCAPTCHA from 'react-google-recaptcha';
 
 const LoginPage = () => {
     const navigate = useNavigate();
@@ -14,6 +15,7 @@ const LoginPage = () => {
     const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
+    const [captchaToken, setCaptchaToken] = useState(null);
 
     // Load Facebook SDK
     useEffect(() => {
@@ -48,15 +50,25 @@ const LoginPage = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
+        
+        if (!captchaToken) {
+            setError('Vui lòng xác thực CAPTCHA.');
+            return;
+        }
+
         setLoading(true);
         try {
-            await authService.login(formData.email, formData.password);
+            await authService.login(formData.email, formData.password, captchaToken);
             navigate('/'); // Redirect to home
         } catch (err) {
             setError(err.response?.data?.message || 'Login failed. Please check your credentials.');
         } finally {
             setLoading(false);
         }
+    };
+
+    const onCaptchaChange = (token) => {
+        setCaptchaToken(token);
     };
 
     const handleGoogleLogin = useGoogleLogin({
@@ -214,6 +226,15 @@ const LoginPage = () => {
                                     </span>
                                 </button>
                             </div>
+                        </div>
+
+                        {/* ReCAPTCHA */}
+                        {/* ReCAPTCHA */}
+                        <div className="flex justify-center">
+                            <ReCAPTCHA
+                                sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY || "6LedT1osAAAAAAfaxs7Gb-Nk1qe2djqtB9gQCgrb"}
+                                onChange={onCaptchaChange}
+                            />
                         </div>
 
                         {/* Submit Button */}

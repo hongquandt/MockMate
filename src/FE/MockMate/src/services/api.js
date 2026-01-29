@@ -35,8 +35,8 @@ api.interceptors.response.use(
 );
 
 export const authService = {
-  login: async (email, password) => {
-    const response = await api.post('/auth/login', { email, password });
+  login: async (email, password, captchaToken) => {
+    const response = await api.post('/auth/login', { email, password, captchaToken });
     if (response.data.token) {
       localStorage.setItem('token', response.data.token);
       localStorage.setItem('user', JSON.stringify(response.data.user));
