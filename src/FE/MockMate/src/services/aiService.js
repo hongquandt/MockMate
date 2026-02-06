@@ -11,19 +11,44 @@ export const aiService = {
       const model = genAI.getGenerativeModel({ model: MODEL_NAME });
 
       const prompt = `
-        ROLE: You are an expert technical recruiter analyzing a candidate's CV.
-        
+        ROLE: You are a strict Senior Technical Recruiter at a top-tier tech company (FAANG level). Your job is to purely evaluate the quality of the CV itself, not just the candidate.
+
         CANDIDATE CV CONTENT:
+        """
         ${cvText}
+        """
+
+        SCORING RUBRIC (Strict Guidelines):
+        1. Impact & Metrics (Weight: 30%): Does the candidate quantify their achievements? (e.g., "Improved latency by 20%" vs "Fixed bugs").
+           - High score: Specific numbers, clear business impact.
+           - Low score: Generic descriptions like "Worked on...", "Helped with...".
+        2. Technical Depth & Relevance (Weight: 30%): Are the skills modern and relevant to the implied role?
+        3. Experience Quality (Weight: 20%): clear progression, ownership of tasks.
+        4. Structure & Clarity (Weight: 20%): logical layout, no typos, professional tone.
+
+        TASK:
+        Analyze the CV and provide a structured JSON output.
         
-        TASK: Analyze the CV and provide a structured JSON output with the following fields:
-        1. matchScore (0-100): An estimated score of how well written this CV is for a general technical role.
-        2. skills (array): List of technical and soft skills found.
-        3. strengths (array): Top 3-5 strong points.
-        4. weaknesses (array): Top 3 areas for improvement.
-        5. summary (string): A brief professional summary.
+        IMPORTANT: 
+        - Be critical. Do not give high scores (90+) easily. A standard "good" CV is usually 70-75.
+        - Identify the likely "Target Role" based on the content (e.g., Senior Backend Engineer).
+        - Generate 3-5 sharp technical interview questions based on the candidate's WEAKNESSES or highlighted SKILLS.
+
+        OUTPUT JSON FORMAT:
+        {
+            "matchScore": number (0-100),
+            "skills": ["skill1", "skill2"],
+            "strengths": ["point 1", "point 2"],
+            "weaknesses": ["critique 1", "critique 2"],
+            "summary": "Brief professional summary of the candidate's level.",
+            "interviewQuestions": [
+                "Question 1 (e.g. You mentioned X, but how do you handle scaling...?)",
+                "Question 2",
+                "Question 3"
+            ]
+        }
         
-        OUTPUT FORMAT: Return ONLY valid JSON. Do not use Markdown code blocks.
+        Return ONLY valid JSON.
       `;
 
       const result = await model.generateContent(prompt);

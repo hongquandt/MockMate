@@ -1,11 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { uploadService } from '../services/uploadService';
 import { pdfService } from '../services/pdfService';
 import { aiService } from '../services/aiService';
 import logoImg from '../assets/img/z7430605225117_544001c3f21b8fc1cb5af11cb46703c0.jpg';
 
 const DashboardPage = () => {
+  const navigate = useNavigate();
   const [file, setFile] = useState(null);
   const [loading, setLoading] = useState(false);
   const [uploadUrl, setUploadUrl] = useState('');
@@ -336,6 +337,31 @@ const DashboardPage = () => {
                                                 ))}
                                             </ul>
                                         </div>
+
+                                        {analysis.interviewQuestions && (
+                                            <div className="p-4 bg-primary/5 rounded-xl border border-primary/20">
+                                                <h4 className="text-sm font-bold text-primary uppercase mb-3 flex items-center gap-2">
+                                                    <span className="material-symbols-outlined">quiz</span>
+                                                    Gợi ý câu hỏi phỏng vấn
+                                                </h4>
+                                                <ul className="space-y-3">
+                                                    {analysis.interviewQuestions.map((q, i) => (
+                                                        <li key={i} className="flex gap-3 text-sm text-slate-700 dark:text-slate-300">
+                                                            <span className="font-bold text-primary/70">{i + 1}.</span>
+                                                            {q}
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            </div>
+                                        )}
+                                        
+                                        <button 
+                                            onClick={() => navigate('/interview', { state: { analysisData: analysis } })}
+                                            className="w-full py-4 bg-gradient-to-r from-primary to-blue-600 hover:from-primary-dark hover:to-blue-700 text-white font-bold rounded-xl shadow-lg shadow-primary/25 flex items-center justify-center gap-2 transition-all transform hover:scale-[1.02]"
+                                        >
+                                            <span className="material-symbols-outlined">video_camera_front</span>
+                                            Bắt đầu Phỏng vấn Thử ngay
+                                        </button>
                                     </div>
                                 </div>
                             )}

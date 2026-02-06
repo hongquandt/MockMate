@@ -1,31 +1,96 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { authService } from '../services/api';
 
 const UserProfilePage = () => {
   const [activeTab, setActiveTab] = useState('overview');
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+  const navigate = useNavigate();
+  const location = useLocation();
 
-  // Dummy user data
-  const user = {
-    name: "Alex Johnson",
-    role: "Senior React Developer",
-    email: "alex.johnson@example.com",
-    location: "Hanoi, Vietnam",
-    joinDate: "September 2023",
-    avatarUrl: "https://i.pravatar.cc/150?u=a042581f4e29026704d",
-    coverUrl: "https://images.unsplash.com/photo-1579546929518-9e396f3cc809?ixlib=rb-1.2.1&auto=format&fit=crop&w=1000&q=80",
-    stats: {
-      interviewsCompleted: 24,
-      avgScore: 8.5,
-      streak: 5,
-      hoursPracticed: 12
-    },
-    skills: ["React", "Node.js", "System Design", "AWS", "TypeScript"],
-    recentActivity: [
-      { id: 1, title: "Mock Interview: Senior Frontend", date: "2 hours ago", score: 8.5, status: "Completed" },
-      { id: 2, title: "CV Analysis: Tech Lead", date: "1 day ago", score: 9.0, status: "Analyzed" },
-      { id: 3, title: "Mock Interview: Behavioral", date: "3 days ago", score: 7.8, status: "Completed" },
-    ]
+  useEffect(() => {
+    loadUserProfile();
+    
+    // Check if returning from payment
+    const params = new URLSearchParams(location.search);
+    const status = params.get('status');
+    if (status === 'success') {
+      setShowSuccessMessage(true);
+      // Reload profile multiple times to catch webhook update
+      // PayOS webhook might take a few seconds to process
+      setTimeout(() => loadUserProfile(), 2000);
+      setTimeout(() => loadUserProfile(), 5000);
+      setTimeout(() => loadUserProfile(), 10000);
+      
+      // Hide success message after 15 seconds
+      setTimeout(() => setShowSuccessMessage(false), 15000);
+      
+      // Clean URL
+      window.history.replaceState({}, '', '/profile');
+    }
+  }, [location]);
+
+  const loadUserProfile = async () => {
+    try {
+      setLoading(true);
+      const profileData = await authService.getUserProfile();
+      setUser(profileData);
+    } catch (error) {
+      console.error('Failed to load profile:', error);
+      // If unauthorized, redirect to login
+      if (error.response?.status === 401) {
+        navigate('/login');
+      }
+    } finally {
+      setLoading(false);
+    }
   };
+
+  const handleLogout = () => {
+    authService.logout();
+  };
+
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-background-light dark:bg-black">
+        <div className="text-center">
+          <div className="inline-block h-12 w-12 animate-spin rounded-full border-4 border-solid border-primary border-r-transparent"></div>
+          <p className="mt-4 text-slate-600 dark:text-slate-400">Loading profile...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-background-light dark:bg-black">
+        <div className="text-center">
+          <p className="text-slate-600 dark:text-slate-400">Failed to load profile</p>
+          <button onClick={() => navigate('/login')} className="mt-4 px-6 py-2 bg-primary text-white rounded-xl">
+            Go to Login
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Dummy data for stats and activity (will be replaced with real data later)
+  const stats = {
+    interviewsCompleted: 24,
+    avgScore: 8.5,
+    streak: 5,
+    hoursPracticed: 12
+  };
+
+  const recentActivity = [
+    { id: 1, title: "Mock Interview: Senior Frontend", date: "2 hours ago", score: 8.5, status: "Completed" },
+    { id: 2, title: "CV Analysis: Tech Lead", date: "1 day ago", score: 9.0, status: "Analyzed" },
+    { id: 3, title: "Mock Interview: Behavioral", date: "3 days ago", score: 7.8, status: "Completed" },
+  ];
+
+  const isVipActive = user.isVip && user.vipExpirationDate && new Date(user.vipExpirationDate) > new Date();
 
   return (
     <div className="flex h-screen bg-background-light dark:bg-black overflow-hidden font-display">
@@ -37,16 +102,16 @@ const UserProfilePage = () => {
         </div>
         
         <nav className="flex-1 px-4 space-y-2 mt-4">
-          <NavItem icon="dashboard" label="Dashboard" />
-          <NavItem icon="person" label="Profile" active />
-          <NavItem icon="description" label="CV Analysis" />
-          <NavItem icon="videocam" label="Interviews" />
-          <NavItem icon="trending_up" label="Progress" />
-          <NavItem icon="settings" label="Settings" />
+          <NavItem icon="dashboard" label="Dashboard" to="/" />
+          <NavItem icon="person" label="Profile" to="/profile" active />
+          <NavItem icon="description" label="CV Analysis" to="/cv-analysis" />
+          <NavItem icon="videocam" label="Interviews" to="/interviews" />
+          <NavItem icon="trending_up" label="Progress" to="/progress" />
+          <NavItem icon="settings" label="Settings" to="/settings" />
         </nav>
 
         <div className="p-4 border-t border-slate-100 dark:border-slate-800">
-          <button className="flex items-center gap-3 w-full p-3 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/10 text-red-500 transition-colors">
+          <button onClick={handleLogout} className="flex items-center gap-3 w-full p-3 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/10 text-red-500 transition-colors">
             <span className="material-symbols-outlined">logout</span>
             <span className="font-medium">Sign Out</span>
           </button>
@@ -61,22 +126,58 @@ const UserProfilePage = () => {
           <button className="text-slate-500"><span className="material-symbols-outlined">menu</span></button>
         </div>
 
+        {/* Success Message Banner */}
+        {showSuccessMessage && (
+          <div className="sticky top-0 z-30 bg-gradient-to-r from-green-500 to-emerald-600 text-white px-6 py-4 shadow-lg">
+            <div className="max-w-5xl mx-auto flex items-center gap-3">
+              <span className="material-symbols-outlined text-2xl animate-bounce">check_circle</span>
+              <div>
+                <p className="font-bold">Payment Successful!</p>
+                <p className="text-sm text-green-100">Your VIP status is being updated. Please wait a moment...</p>
+              </div>
+              <button 
+                onClick={() => {
+                  setShowSuccessMessage(false);
+                  loadUserProfile();
+                }}
+                className="ml-auto px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg font-bold text-sm transition-colors"
+              >
+                Refresh Now
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className="max-w-5xl mx-auto p-4 md:p-8 pb-20">
           
           {/* Profile Header */}
           <div className="relative mb-20 md:mb-24">
-            <div className="h-48 md:h-64 w-full rounded-2xl md:rounded-3xl overflow-hidden shadow-sm">
-              <img src={user.coverUrl} alt="Cover" className="w-full h-full object-cover" />
+            <div className="h-48 md:h-64 w-full rounded-2xl md:rounded-3xl overflow-hidden shadow-sm bg-gradient-to-r from-primary to-purple-600">
               <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
             </div>
             
             <div className="absolute -bottom-16 left-6 md:left-10 flex flex-col md:flex-row items-end md:items-center gap-4 md:gap-6">
-              <div className="h-32 w-32 md:h-40 md:w-40 rounded-full border-4 border-white dark:border-background-dark shadow-xl overflow-hidden bg-white">
-                <img src={user.avatarUrl} alt={user.name} className="w-full h-full object-cover" />
+              <div className="relative h-32 w-32 md:h-40 md:w-40 rounded-full border-4 border-white dark:border-background-dark shadow-xl overflow-hidden bg-gradient-to-br from-primary to-purple-600">
+                <div className="w-full h-full flex items-center justify-center text-white text-5xl md:text-6xl font-black">
+                  {user.fullName?.charAt(0).toUpperCase() || 'U'}
+                </div>
+                {isVipActive && (
+                  <div className="absolute bottom-0 right-0 bg-gradient-to-r from-amber-500 to-orange-600 text-white px-3 py-1 rounded-tl-xl rounded-br-xl shadow-lg flex items-center gap-1">
+                    <span className="material-symbols-outlined text-sm">workspace_premium</span>
+                    <span className="font-bold text-xs">VIP</span>
+                  </div>
+                )}
               </div>
               <div className="mb-2 md:mb-4">
-                <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white drop-shadow-sm md:drop-shadow-none md:text-black">{user.name}</h1>
-                <p className="text-slate-200 md:text-slate-500 font-medium">{user.role}</p>
+                <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white drop-shadow-sm md:drop-shadow-none md:text-black">
+                  {user.fullName || 'User'}
+                </h1>
+                <p className="text-slate-200 md:text-slate-500 font-medium">{user.email}</p>
+                {isVipActive && (
+                  <p className="text-xs text-amber-600 dark:text-amber-400 font-bold mt-1">
+                    VIP until {new Date(user.vipExpirationDate).toLocaleDateString()}
+                  </p>
+                )}
               </div>
               <div className="flex-1"></div>
               <button className="mb-4 hidden md:flex items-center gap-2 px-5 py-2.5 bg-primary hover:bg-primary-dark text-white rounded-xl font-bold transition-all shadow-lg hover:shadow-primary/30">
@@ -95,29 +196,52 @@ const UserProfilePage = () => {
                 <h3 className="font-bold text-lg mb-4 text-slate-900 dark:text-white">Personal Info</h3>
                 <div className="space-y-4">
                   <InfoItem icon="mail" label="Email" value={user.email} />
-                  <InfoItem icon="location_on" label="Location" value={user.location} />
-                  <InfoItem icon="calendar_today" label="Joined" value={user.joinDate} />
-                  <InfoItem icon="language" label="Website" value="alexjohnson.dev" isLink />
+                  <InfoItem icon="person" label="User ID" value={`#${user.userId}`} />
+                  {isVipActive && (
+                    <InfoItem icon="workspace_premium" label="VIP Status" value="Active" />
+                  )}
                 </div>
               </div>
 
-              {/* Skills Card */}
-              <div className="bg-white dark:bg-background-dark p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="font-bold text-lg text-slate-900 dark:text-white">Skills</h3>
-                  <button className="text-primary text-sm font-bold hover:underline">Add New</button>
+              {/* Upgrade VIP Card - Only show if not VIP */}
+              {!isVipActive && (
+                <div className="bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl p-6 text-white shadow-lg shadow-amber-500/20 relative overflow-hidden">
+                  <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-white/10 rounded-full blur-2xl"></div>
+                  
+                  <div className="flex items-center gap-3 mb-4">
+                    <span className="material-symbols-outlined text-3xl bg-white/20 p-2 rounded-lg">workspace_premium</span>
+                    <div>
+                      <h3 className="font-bold text-lg leading-tight">MockMate VIP</h3>
+                      <p className="text-amber-100 text-xs">Mở khóa toàn bộ tính năng</p>
+                    </div>
+                  </div>
+
+                  <ul className="space-y-2 mb-6 text-sm text-amber-50">
+                    <li className="flex items-center gap-2"><span className="material-symbols-outlined text-sm">check</span> Phỏng vấn không giới hạn</li>
+                    <li className="flex items-center gap-2"><span className="material-symbols-outlined text-sm">check</span> AI phân tích chi tiết</li>
+                  </ul>
+
+                  <Link to="/vip-upgrade" className="block w-full py-2.5 bg-white text-amber-600 font-bold text-center rounded-xl hover:bg-amber-50 transition-colors shadow-sm">
+                    Nâng cấp ngay
+                  </Link>
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  {user.skills.map((skill, index) => (
-                    <span key={index} className="px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-full text-sm font-medium border border-slate-200 dark:border-slate-700">
-                      {skill}
-                    </span>
-                  ))}
-                  <button className="px-3 py-1 border border-dashed border-slate-300 dark:border-slate-600 text-slate-400 rounded-full text-sm hover:bg-slate-50 dark:hover:bg-slate-800 font-medium transition-colors">
-                    +
-                  </button>
+              )}
+
+              {/* VIP Benefits Card - Show if VIP */}
+              {isVipActive && (
+                <div className="bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl p-6 text-white shadow-lg shadow-amber-500/20">
+                  <div className="flex items-center gap-3 mb-4">
+                    <span className="material-symbols-outlined text-3xl">workspace_premium</span>
+                    <div>
+                      <h3 className="font-bold text-lg">VIP Active</h3>
+                      <p className="text-amber-100 text-xs">Expires: {new Date(user.vipExpirationDate).toLocaleDateString()}</p>
+                    </div>
+                  </div>
+                  <Link to="/vip-upgrade" className="block w-full py-2.5 bg-white/20 hover:bg-white/30 text-white font-bold text-center rounded-xl transition-colors">
+                    Extend VIP
+                  </Link>
                 </div>
-              </div>
+              )}
             </div>
 
             {/* Right Column - Stats & Activity */}
@@ -125,10 +249,10 @@ const UserProfilePage = () => {
               
               {/* Stats Grid */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <StatCard icon="videocam" label="Interviews" value={user.stats.interviewsCompleted} color="text-blue-500" bg="bg-blue-500/10" />
-                <StatCard icon="bolt" label="Avg Score" value={user.stats.avgScore} color="text-yellow-500" bg="bg-yellow-500/10" />
-                <StatCard icon="local_fire_department" label="Streak" value={user.stats.streak + " Days"} color="text-orange-500" bg="bg-orange-500/10" />
-                <StatCard icon="schedule" label="Practiced" value={user.stats.hoursPracticed + "h"} color="text-green-500" bg="bg-green-500/10" />
+                <StatCard icon="videocam" label="Interviews" value={stats.interviewsCompleted} color="text-blue-500" bg="bg-blue-500/10" />
+                <StatCard icon="bolt" label="Avg Score" value={stats.avgScore} color="text-yellow-500" bg="bg-yellow-500/10" />
+                <StatCard icon="local_fire_department" label="Streak" value={stats.streak + " Days"} color="text-orange-500" bg="bg-orange-500/10" />
+                <StatCard icon="schedule" label="Practiced" value={stats.hoursPracticed + "h"} color="text-green-500" bg="bg-green-500/10" />
               </div>
 
               {/* Tabs */}
@@ -145,7 +269,7 @@ const UserProfilePage = () => {
                     <div>
                       <h3 className="font-bold text-lg mb-4 text-slate-900 dark:text-white">Recent Activity</h3>
                       <div className="space-y-4">
-                        {user.recentActivity.map((item) => (
+                        {recentActivity.map((item) => (
                           <div key={item.id} className="flex items-center justify-between p-4 rounded-xl border border-slate-100 dark:border-slate-700/50 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group cursor-pointer">
                             <div className="flex items-center gap-4">
                               <div className={`h-10 w-10 rounded-full flex items-center justify-center ${getStatusColor(item.status)}`}>
@@ -164,20 +288,6 @@ const UserProfilePage = () => {
                         ))}
                       </div>
                     </div>
-
-                    <div className="bg-gradient-to-r from-primary/10 to-purple-500/10 p-6 rounded-xl border border-primary/20 flex flex-col md:flex-row items-center justify-between gap-4">
-                      <div>
-                        <h4 className="font-bold text-slate-900 dark:text-white mb-1">Weekly Goal: 3 Interviews</h4>
-                        <p className="text-sm text-slate-500 dark:text-slate-400">You have completed 1 out of 3 interviews this week. Keep it up!</p>
-                      </div>
-                      <div className="h-12 w-12 relative flex items-center justify-center">
-                         <svg className="transform -rotate-90 w-12 h-12">
-                            <circle cx="24" cy="24" r="20" stroke="currentColor" strokeWidth="4" fill="transparent" className="text-slate-200 dark:text-slate-700" />
-                            <circle cx="24" cy="24" r="20" stroke="currentColor" strokeWidth="4" fill="transparent" strokeDasharray="125.6" strokeDashoffset="83.7" className="text-primary" />
-                         </svg>
-                         <span className="absolute text-xs font-bold text-primary">33%</span>
-                      </div>
-                    </div>
                   </div>
                 )}
                 {activeTab === 'history' && <p className="text-slate-500 text-center py-10">History content goes here...</p>}
@@ -193,8 +303,8 @@ const UserProfilePage = () => {
 };
 
 // Sub-components for cleaner code
-const NavItem = ({ icon, label, active = false }) => (
-  <Link to="#" className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-medium ${active ? 'bg-primary text-white shadow-lg shadow-primary/25' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}>
+const NavItem = ({ icon, label, to, active = false }) => (
+  <Link to={to} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-medium ${active ? 'bg-primary text-white shadow-lg shadow-primary/25' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}>
     <span className="material-symbols-outlined">{icon}</span>
     {label}
   </Link>

@@ -29,9 +29,15 @@ public partial class User
 
     public DateTime? CreatedAt { get; set; }
 
+    public bool IsVip { get; set; } = false;
+
+    public DateTime? VipExpirationDate { get; set; }
+
     public virtual ICollection<CareerTask> CareerTasks { get; set; } = new List<CareerTask>();
 
     public virtual ICollection<InterviewSession> InterviewSessions { get; set; } = new List<InterviewSession>();
+
+    public virtual ICollection<PaymentTransaction> PaymentTransactions { get; set; } = new List<PaymentTransaction>();
 
     public virtual Role Role { get; set; } = null!;
 }
