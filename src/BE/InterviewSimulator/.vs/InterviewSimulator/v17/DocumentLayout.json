@@ -1,10 +1,22 @@
 {
   "Version": 1,
-  "WorkspaceRootPath": "D:\\Ky7\\EXE\\ProjectEXE\\src\\BE\\InterviewSimulator\\",
+  "WorkspaceRootPath": "D:\\Ky7\\EXE\\ProjectEXE\\MockMate\\src\\BE\\InterviewSimulator\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{E185B49B-5628-4CB5-8655-495622FC42DC}|InterviewSimulator\\InterviewSimulator.csproj|d:\\ky7\\exe\\projectexe\\src\\be\\interviewsimulator\\interviewsimulator\\appsettings.development.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
+      "AbsoluteMoniker": "D:0:0:{E185B49B-5628-4CB5-8655-495622FC42DC}|InterviewSimulator\\InterviewSimulator.csproj|d:\\ky7\\exe\\projectexe\\mockmate\\src\\be\\interviewsimulator\\interviewsimulator\\appsettings.development.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
       "RelativeMoniker": "D:0:0:{E185B49B-5628-4CB5-8655-495622FC42DC}|InterviewSimulator\\InterviewSimulator.csproj|solutionrelative:interviewsimulator\\appsettings.development.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{E185B49B-5628-4CB5-8655-495622FC42DC}|InterviewSimulator\\InterviewSimulator.csproj|d:\\ky7\\exe\\projectexe\\mockmate\\src\\be\\interviewsimulator\\interviewsimulator\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
+      "RelativeMoniker": "D:0:0:{E185B49B-5628-4CB5-8655-495622FC42DC}|InterviewSimulator\\InterviewSimulator.csproj|solutionrelative:interviewsimulator\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{E185B49B-5628-4CB5-8655-495622FC42DC}|InterviewSimulator\\InterviewSimulator.csproj|d:\\ky7\\exe\\projectexe\\mockmate\\src\\be\\interviewsimulator\\interviewsimulator\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{E185B49B-5628-4CB5-8655-495622FC42DC}|InterviewSimulator\\InterviewSimulator.csproj|solutionrelative:interviewsimulator\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{E185B49B-5628-4CB5-8655-495622FC42DC}|InterviewSimulator\\InterviewSimulator.csproj|d:\\ky7\\exe\\projectexe\\mockmate\\src\\be\\interviewsimulator\\interviewsimulator\\models\\mockmatedbcontext.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{E185B49B-5628-4CB5-8655-495622FC42DC}|InterviewSimulator\\InterviewSimulator.csproj|solutionrelative:interviewsimulator\\models\\mockmatedbcontext.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     }
   ],
   "DocumentGroupContainers": [
@@ -44,14 +56,50 @@
               "$type": "Document",
               "DocumentIndex": 0,
               "Title": "appsettings.Development.json",
-              "DocumentMoniker": "D:\\Ky7\\EXE\\ProjectEXE\\src\\BE\\InterviewSimulator\\InterviewSimulator\\appsettings.Development.json",
+              "DocumentMoniker": "D:\\Ky7\\EXE\\ProjectEXE\\MockMate\\src\\BE\\InterviewSimulator\\InterviewSimulator\\appsettings.Development.json",
               "RelativeDocumentMoniker": "InterviewSimulator\\appsettings.Development.json",
-              "ToolTip": "D:\\Ky7\\EXE\\ProjectEXE\\src\\BE\\InterviewSimulator\\InterviewSimulator\\appsettings.Development.json",
+              "ToolTip": "D:\\Ky7\\EXE\\ProjectEXE\\MockMate\\src\\BE\\InterviewSimulator\\InterviewSimulator\\appsettings.Development.json",
               "RelativeToolTip": "InterviewSimulator\\appsettings.Development.json",
-              "ViewState": "AgIAAB4AAAAAAAAAAAAAAAIAAAA6AAAAAAAAAA==",
+              "ViewState": "AgIAAAoAAAAAAAAAAAAuwBMAAAAVAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
-              "WhenOpened": "2026-01-13T15:47:18.917Z",
+              "WhenOpened": "2026-01-26T04:05:29.083Z",
               "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "Program.cs",
+              "DocumentMoniker": "D:\\Ky7\\EXE\\ProjectEXE\\MockMate\\src\\BE\\InterviewSimulator\\InterviewSimulator\\Program.cs",
+              "RelativeDocumentMoniker": "InterviewSimulator\\Program.cs",
+              "ToolTip": "D:\\Ky7\\EXE\\ProjectEXE\\MockMate\\src\\BE\\InterviewSimulator\\InterviewSimulator\\Program.cs",
+              "RelativeToolTip": "InterviewSimulator\\Program.cs",
+              "ViewState": "AgIAAD0AAAAAAAAAAAAQwGwAAAAkAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-01-26T03:52:52.785Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "appsettings.json",
+              "DocumentMoniker": "D:\\Ky7\\EXE\\ProjectEXE\\MockMate\\src\\BE\\InterviewSimulator\\InterviewSimulator\\appsettings.json",
+              "RelativeDocumentMoniker": "InterviewSimulator\\appsettings.json",
+              "ToolTip": "D:\\Ky7\\EXE\\ProjectEXE\\MockMate\\src\\BE\\InterviewSimulator\\InterviewSimulator\\appsettings.json",
+              "RelativeToolTip": "InterviewSimulator\\appsettings.json",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
+              "WhenOpened": "2026-01-26T03:50:12.249Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "MockMateDbContext.cs",
+              "DocumentMoniker": "D:\\Ky7\\EXE\\ProjectEXE\\MockMate\\src\\BE\\InterviewSimulator\\InterviewSimulator\\Models\\MockMateDbContext.cs",
+              "RelativeDocumentMoniker": "InterviewSimulator\\Models\\MockMateDbContext.cs",
+              "ToolTip": "D:\\Ky7\\EXE\\ProjectEXE\\MockMate\\src\\BE\\InterviewSimulator\\InterviewSimulator\\Models\\MockMateDbContext.cs",
+              "RelativeToolTip": "InterviewSimulator\\Models\\MockMateDbContext.cs",
+              "ViewState": "AgIAAB8AAAAAAAAAAAA9wCoAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-01-21T09:28:22.765Z"
             }
           ]
         },

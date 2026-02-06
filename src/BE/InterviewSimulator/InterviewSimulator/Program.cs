@@ -16,7 +16,7 @@ namespace InterviewSimulator
 
             // DB Configuration
             builder.Services.AddDbContext<InterviewSimulator.Models.MockMateDbContext>(options =>
-                options.UseSqlServer(builder.Configuration.GetConnectionString("DBDefault")));
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DBDefault")));
 
             // Auth Configuration
             builder.Services.AddAuthentication(options =>
