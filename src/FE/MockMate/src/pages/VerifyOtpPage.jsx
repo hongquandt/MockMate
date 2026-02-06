@@ -2,8 +2,12 @@ import React, { useState, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import logoImg from '../assets/img/z7430605225117_544001c3f21b8fc1cb5af11cb46703c0.jpg';
 
+import { authService } from '../services/api';
+
 const VerifyOtpPage = () => {
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const inputRefs = useRef([]);
   const location = useLocation();
   const navigate = useNavigate();
@@ -50,14 +54,23 @@ const VerifyOtpPage = () => {
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const otpCode = otp.join('');
-    console.log('Verify OTP:', otpCode);
     
-    if (otpCode.length === 6) {
-      // Navigate to reset password page
+    if (otpCode.length !== 6) return;
+
+    setLoading(true);
+    setError('');
+
+    try {
+      await authService.verifyOtp(email, otpCode);
+      // Navigate to reset password page if verify success
       navigate('/reset-password', { state: { email, otp: otpCode } });
+    } catch (err) {
+      setError(err.response?.data?.message || 'Mã xác thực không đúng hoặc đã hết hạn');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -100,6 +113,12 @@ const VerifyOtpPage = () => {
             </p>
           </div>
 
+          {error && (
+            <div className="mb-6 p-3 bg-red-100 text-red-700 rounded-lg text-sm text-center font-medium">
+                {error}
+            </div>
+          )}
+
           {/* OTP Input */}
           <form onSubmit={handleSubmit}>
             <div className="flex justify-center gap-2 mb-6">
@@ -125,9 +144,10 @@ const VerifyOtpPage = () => {
             {/* Submit Button */}
             <button
               type="submit"
-              className="w-full bg-primary hover:bg-primary-dark text-white font-bold py-3 rounded-xl transition-colors shadow-lg shadow-primary/20"
+              disabled={loading}
+              className="w-full bg-primary hover:bg-primary-dark text-white font-bold py-3 rounded-xl transition-colors shadow-lg shadow-primary/20 disabled:opacity-70 disabled:cursor-not-allowed"
             >
-              Xác nhận
+              {loading ? 'Đang xác thực...' : 'Xác nhận'}
             </button>
           </form>
 

@@ -6,6 +6,10 @@ import RegisterPage from './pages/RegisterPage'
 import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import VerifyOtpPage from './pages/VerifyOtpPage'
 import ResetPasswordPage from './pages/ResetPasswordPage'
+import UserProfilePage from './pages/UserProfilePage'
+import DashboardPage from './pages/DashboardPage'
+import InterviewPage from './pages/InterviewPage'
+import VipUpgradePage from './pages/VipUpgradePage'
 
 function App() {
   return (
@@ -17,6 +21,10 @@ function App() {
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/verify-otp" element={<VerifyOtpPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
+        <Route path="/profile" element={<UserProfilePage />} />
+        <Route path="/dashboard" element={<DashboardPage />} />
+        <Route path="/interview" element={<InterviewPage />} />
+        <Route path="/vip-upgrade" element={<VipUpgradePage />} />
       </Routes>
     </Router>
   )

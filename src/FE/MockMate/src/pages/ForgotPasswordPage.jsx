@@ -1,16 +1,27 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import logoImg from '../assets/img/z7430605225117_544001c3f21b8fc1cb5af11cb46703c0.jpg';
+import { authService } from '../services/api';
 
 const ForgotPasswordPage = () => {
   const [email, setEmail] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const navigate = useNavigate();
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log('Send verification code to:', email);
-    // Navigate to OTP verification page with email
-    navigate('/verify-otp', { state: { email } });
+    setLoading(true);
+    setError('');
+    
+    try {
+      await authService.forgotPassword(email);
+      navigate('/verify-otp', { state: { email } });
+    } catch (err) {
+      // Capture the message which might contain the Dev OTP
+      setError(err.response?.data?.message || 'Có lỗi xảy ra. Vui lòng thử lại.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -37,6 +48,12 @@ const ForgotPasswordPage = () => {
               </p>
             </div>
 
+            {error && (
+                <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg text-sm text-center font-medium">
+                    {error}
+                </div>
+            )}
+            
             {/* Form */}
             <form onSubmit={handleSubmit} className="space-y-5">
               {/* Email */}
@@ -62,9 +79,10 @@ const ForgotPasswordPage = () => {
               {/* Submit Button */}
               <button
                 type="submit"
-                className="w-full bg-primary hover:bg-primary-dark text-white font-bold py-3 rounded-xl transition-colors shadow-lg shadow-primary/20"
+                disabled={loading}
+                className="w-full bg-primary hover:bg-primary-dark text-white font-bold py-3 rounded-xl transition-colors shadow-lg shadow-primary/20 disabled:opacity-70 disabled:cursor-not-allowed"
               >
-                Send Verification Code
+                {loading ? 'Sending...' : 'Send Verification Code'}
               </button>
             </form>
 

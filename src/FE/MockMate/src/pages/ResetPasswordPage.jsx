@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
 import logoImg from '../assets/img/z7430605225117_544001c3f21b8fc1cb5af11cb46703c0.jpg';
 
+import { authService } from '../services/api';
+
 const ResetPasswordPage = () => {
   const [formData, setFormData] = useState({
     newPassword: '',
@@ -9,6 +11,10 @@ const ResetPasswordPage = () => {
   });
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState(false);
+  
   const [passwordStrength, setPasswordStrength] = useState({
     length: false,
     lowercase: false,
@@ -18,6 +24,15 @@ const ResetPasswordPage = () => {
 
   const location = useLocation();
   const navigate = useNavigate();
+  // Safe destructure
+  const { email, otp } = location.state || {};
+
+  // Redirect if missing data
+  React.useEffect(() => {
+    if (!email || !otp) {
+        navigate('/login');
+    }
+  }, [email, otp, navigate]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -26,7 +41,7 @@ const ResetPasswordPage = () => {
       [name]: value
     });
 
-    // Check password strength for new password
+    // Check strength
     if (name === 'newPassword') {
       setPasswordStrength({
         length: value.length >= 8,
@@ -37,17 +52,32 @@ const ResetPasswordPage = () => {
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     
     if (formData.newPassword !== formData.confirmPassword) {
-      alert('Passwords do not match!');
+      setError('Mật khẩu xác nhận không khớp');
       return;
     }
 
-    console.log('Reset password:', formData);
-    // Navigate to login page after successful reset
-    navigate('/login');
+    if (!passwordStrength.length) {
+        setError('Mật khẩu phải có ít nhất 8 ký tự');
+        return;
+    }
+
+    setLoading(true);
+    setError('');
+
+    try {
+        await authService.resetPassword(email, otp, formData.newPassword, formData.confirmPassword);
+        setSuccess(true);
+        setTimeout(() => {
+             navigate('/login');
+        }, 3000);
+    } catch (err) {
+        setError(err.response?.data?.message || 'Đổi mật khẩu thất bại. Vui lòng thử lại.');
+        setLoading(false);
+    }
   };
 
   return (
@@ -85,6 +115,19 @@ const ResetPasswordPage = () => {
                 Your new password must be different from previous passwords.
               </p>
             </div>
+
+            {error && (
+                <div className="mb-6 p-3 bg-red-100 text-red-700 rounded-lg text-sm text-center font-medium">
+                    {error}
+                </div>
+            )}
+
+            {success && (
+                <div className="mb-6 p-4 bg-green-100 text-green-700 rounded-lg text-center">
+                    <h3 className="font-bold text-lg mb-1">Thành công!</h3>
+                    <p>Mật khẩu của bạn đã được cập nhật. Đang chuyển hướng...</p>
+                </div>
+            )}
 
             {/* Form */}
             <form onSubmit={handleSubmit} className="space-y-5">
@@ -202,9 +245,10 @@ const ResetPasswordPage = () => {
               {/* Submit Button */}
               <button
                 type="submit"
-                className="w-full bg-primary hover:bg-primary-dark text-white font-bold py-3 rounded-xl transition-colors shadow-lg shadow-primary/20"
+                disabled={loading || success}
+                className="w-full bg-primary hover:bg-primary-dark text-white font-bold py-3 rounded-xl transition-colors shadow-lg shadow-primary/20 disabled:opacity-70 disabled:cursor-not-allowed"
               >
-                Update Password
+                {loading ? 'Updating...' : 'Update Password'}
               </button>
             </form>
 

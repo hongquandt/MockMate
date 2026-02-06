@@ -1,15 +1,31 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import logoImg from '../assets/img/z7430605225117_544001c3f21b8fc1cb5af11cb46703c0.jpg';
+import { authService } from '../services/api';
 
 const HomePage = () => {
+    const navigate = useNavigate();
+    const [user, setUser] = useState(null);
+    const [showDropdown, setShowDropdown] = useState(false);
+
+    useEffect(() => {
+        const storedUser = authService.getCurrentUser();
+        setUser(storedUser);
+    }, []);
+
+    const handleLogout = () => {
+        authService.logout();
+        setUser(null);
+        navigate('/'); // Optional: Refresh or stay
+    };
+
   return (
     <div className="relative flex h-auto min-h-screen w-full flex-col group/design-root overflow-x-hidden">
       {/* Header */}
       <div className="layout-container flex flex-col border-b border-solid border-[#e7edf3] dark:border-slate-800 bg-white dark:bg-background-dark sticky top-0 z-50">
         <div className="px-6 md:px-10 lg:px-40 flex justify-center py-3">
           <header className="flex items-center justify-between whitespace-nowrap w-full max-w-[1200px]">
-            <div className="flex items-center gap-3 text-[#0d141b] dark:text-white">
+            <div className="flex items-center gap-3 text-[#0d141b] dark:text-white cursor-pointer" onClick={() => navigate('/')}>
               <img src={logoImg} alt="MockMate Logo" className="h-10 w-10 object-contain rounded-lg" />
               <h2 className="text-xl font-bold leading-tight tracking-[-0.015em]">MockMate</h2>
             </div>
@@ -18,16 +34,66 @@ const HomePage = () => {
                 <a className="text-[#0d141b] dark:text-slate-200 text-sm font-medium hover:text-primary transition-colors" href="#">Features</a>
                 <a className="text-[#0d141b] dark:text-slate-200 text-sm font-medium hover:text-primary transition-colors" href="#">Pricing</a>
                 <a className="text-[#0d141b] dark:text-slate-200 text-sm font-medium hover:text-primary transition-colors" href="#">About Us</a>
-                <a className="text-[#0d141b] dark:text-slate-200 text-sm font-medium hover:text-primary transition-colors" href="#">Success Stories</a>
               </nav>
-              <div className="flex gap-2">
-                <Link to="/register" className="flex min-w-[84px] cursor-pointer items-center justify-center rounded-lg h-10 px-4 bg-primary text-white text-sm font-bold tracking-[0.015em] hover:bg-primary-dark transition-colors">
-                  <span>Sign Up</span>
-                </Link>
-                <Link to="/login" className="flex min-w-[84px] cursor-pointer items-center justify-center rounded-lg h-10 px-4 bg-[#e7edf3] dark:bg-slate-700 text-[#0d141b] dark:text-white text-sm font-bold tracking-[0.015em] hover:bg-[#d1dbe5] transition-colors">
-                  <span>Log In</span>
-                </Link>
-              </div>
+              
+              {user ? (
+                  // User Avatar & Dropdown
+                  <div className="relative">
+                      <button 
+                          onClick={() => setShowDropdown(!showDropdown)}
+                          className="flex items-center gap-2 p-1 pr-3 rounded-full border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                      >
+                          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold overflow-hidden">
+                              {/* Show Avatar or Initials */}
+                              {user.avatarUrl ? (
+                                  <img src={user.avatarUrl} alt={user.fullName} className="w-full h-full object-cover"/>
+                              ) : (
+                                  user.fullName ? user.fullName.charAt(0).toUpperCase() : 'U'
+                              )}
+                          </div>
+                          <span className="text-sm font-medium text-slate-700 dark:text-slate-200 hidden sm:block max-w-[100px] truncate">
+                              {user.fullName || 'User'}
+                          </span>
+                          <span className="material-symbols-outlined text-slate-400 text-lg">arrow_drop_down</span>
+                      </button>
+
+                      {/* Dropdown Menu */}
+                      {showDropdown && (
+                          <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-100 dark:border-slate-700 py-2 animate-in fade-in zoom-in duration-200">
+                              <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-700">
+                                  <p className="text-sm font-bold text-slate-900 dark:text-white truncate">{user.fullName}</p>
+                                  <p className="text-xs text-slate-500 truncate">{user.email}</p>
+                              </div>
+                              <Link to="/profile" className="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50 hover:text-primary transition-colors">
+                                  <span className="material-symbols-outlined text-lg">person</span>
+                                  My Profile
+                              </Link>
+                              <Link to="/dashboard" className="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50 hover:text-primary transition-colors">
+                                  <span className="material-symbols-outlined text-lg">dashboard</span>
+                                  Dashboard
+                              </Link>
+                              <div className="border-t border-slate-100 dark:border-slate-700 my-1"></div>
+                              <button 
+                                  onClick={handleLogout}
+                                  className="w-full text-left flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                              >
+                                  <span className="material-symbols-outlined text-lg">logout</span>
+                                  Sign Out
+                              </button>
+                          </div>
+                      )}
+                  </div>
+              ) : (
+                  // Guest Login/Register Buttons
+                  <div className="flex gap-2">
+                    <Link to="/register" className="flex min-w-[84px] cursor-pointer items-center justify-center rounded-lg h-10 px-4 bg-primary text-white text-sm font-bold tracking-[0.015em] hover:bg-primary-dark transition-colors">
+                      <span>Sign Up</span>
+                    </Link>
+                    <Link to="/login" className="flex min-w-[84px] cursor-pointer items-center justify-center rounded-lg h-10 px-4 bg-[#e7edf3] dark:bg-slate-700 text-[#0d141b] dark:text-white text-sm font-bold tracking-[0.015em] hover:bg-[#d1dbe5] transition-colors">
+                      <span>Log In</span>
+                    </Link>
+                  </div>
+              )}
             </div>
           </header>
         </div>
