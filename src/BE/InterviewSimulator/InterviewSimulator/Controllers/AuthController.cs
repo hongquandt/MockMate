@@ -1,6 +1,9 @@
 using InterviewSimulator.DTOs;
 using InterviewSimulator.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
+using InterviewSimulator.Models;
 
 namespace InterviewSimulator.Controllers
 {
@@ -9,10 +12,12 @@ namespace InterviewSimulator.Controllers
     public class AuthController : ControllerBase
     {
         private readonly IAuthService _authService;
+        private readonly MockMateDbContext _context;
 
-        public AuthController(IAuthService authService)
+        public AuthController(IAuthService authService, MockMateDbContext context)
         {
             _authService = authService;
+            _context = context;
         }
 
         [HttpPost("login")]
@@ -75,6 +80,49 @@ namespace InterviewSimulator.Controllers
             {
                 await _authService.ResetPasswordAsync(request);
                 return Ok(new { message = "Password reset successfully." });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        [HttpPost("social-login")]
+        public async Task<ActionResult<AuthResponse>> SocialLogin(SocialLoginRequest request)
+        {
+            try
+            {
+                var response = await _authService.SocialLoginAsync(request);
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        [HttpGet("profile")]
+        [Authorize]
+        public async Task<IActionResult> GetProfile()
+        {
+            try
+            {
+                var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userIdStr)) return Unauthorized();
+
+                var userId = int.Parse(userIdStr);
+                var user = await _context.Users.FindAsync(userId);
+                
+                if (user == null) return NotFound(new { message = "User not found" });
+
+                return Ok(new
+                {
+                    userId = user.Id,
+                    fullName = user.FullName,
+                    email = user.Email,
+                    isVip = user.IsVip,
+                    vipExpirationDate = user.VipExpirationDate
+                });
             }
             catch (Exception ex)
             {

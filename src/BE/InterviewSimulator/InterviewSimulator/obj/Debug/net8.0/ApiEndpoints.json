@@ -43,6 +43,16 @@
   },
   {
     "ContainingType": "InterviewSimulator.Controllers.AuthController",
+    "Method": "GetProfile",
+    "RelativePath": "api/Auth/profile",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "InterviewSimulator.Controllers.AuthController",
     "Method": "Register",
     "RelativePath": "api/Auth/register",
     "HttpMethod": "POST",
@@ -85,6 +95,32 @@
   },
   {
     "ContainingType": "InterviewSimulator.Controllers.AuthController",
+    "Method": "SocialLogin",
+    "RelativePath": "api/Auth/social-login",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "InterviewSimulator.DTOs.SocialLoginRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "InterviewSimulator.DTOs.AuthResponse",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "InterviewSimulator.Controllers.AuthController",
     "Method": "VerifyOtp",
     "RelativePath": "api/Auth/verify-otp",
     "HttpMethod": "POST",
@@ -94,6 +130,38 @@
       {
         "Name": "request",
         "Type": "InterviewSimulator.DTOs.VerifyOtpRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "InterviewSimulator.Controllers.PaymentController",
+    "Method": "CreatePaymentLink",
+    "RelativePath": "api/Payment/create-payment-link",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "InterviewSimulator.DTOs.VipPaymentRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "InterviewSimulator.Controllers.PaymentController",
+    "Method": "Webhook",
+    "RelativePath": "api/Payment/webhook",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "webhookBody",
+        "Type": "InterviewSimulator.DTOs.PayOSWebhookBody",
         "IsRequired": true
       }
     ],

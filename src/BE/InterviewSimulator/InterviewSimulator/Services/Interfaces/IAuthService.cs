@@ -9,5 +9,6 @@ namespace InterviewSimulator.Services.Interfaces
         Task SendForgotPasswordOtpAsync(string email);
         Task<bool> VerifyOtpAsync(string email, string otp);
         Task ResetPasswordAsync(ResetPasswordRequest request);
+        Task<AuthResponse> SocialLoginAsync(SocialLoginRequest request);
     }
 }

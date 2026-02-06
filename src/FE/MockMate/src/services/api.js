@@ -35,8 +35,8 @@ api.interceptors.response.use(
 );
 
 export const authService = {
-  login: async (email, password) => {
-    const response = await api.post('/auth/login', { email, password });
+  login: async (email, password, captchaToken) => {
+    const response = await api.post('/auth/login', { email, password, captchaToken });
     if (response.data.token) {
       localStorage.setItem('token', response.data.token);
       localStorage.setItem('user', JSON.stringify(response.data.user));
@@ -51,6 +51,15 @@ export const authService = {
       password,
       confirmPassword,
     });
+    if (response.data.token) {
+      localStorage.setItem('token', response.data.token);
+      localStorage.setItem('user', JSON.stringify(response.data.user));
+    }
+    return response.data;
+  },
+
+  socialLogin: async (data) => {
+    const response = await api.post('/auth/social-login', data);
     if (response.data.token) {
       localStorage.setItem('token', response.data.token);
       localStorage.setItem('user', JSON.stringify(response.data.user));
@@ -88,6 +97,25 @@ export const authService = {
     const userStr = localStorage.getItem('user');
     if (userStr) return JSON.parse(userStr);
     return null;
+  },
+
+  getUserProfile: async () => {
+    const response = await api.get('/auth/profile');
+    if (response.data) {
+      localStorage.setItem('user', JSON.stringify(response.data));
+    }
+    return response.data;
+  }
+};
+
+export const paymentService = {
+  createPaymentLink: async (planId) => {
+    const callbackUrl = `${window.location.origin}/profile`;
+    const response = await api.post('/payment/create-payment-link', { 
+      planId,
+      callbackUrl 
+    });
+    return response.data;
   }
 };
 

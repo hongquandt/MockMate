@@ -33,8 +33,24 @@ CREATE TABLE Users (
     
     IsDeleted BIT DEFAULT 0,          -- Soft Delete: 0=Active, 1=Deleted
     CreatedAt DATETIME2 DEFAULT GETDATE(),
+
+    -- VIP Membership
+    IsVip BIT DEFAULT 0,
+    VipExpirationDate DATETIME2,
     
     CONSTRAINT FK_Users_Roles FOREIGN KEY (RoleId) REFERENCES Roles(Id)
+);
+
+-- 3.1. Bảng PaymentTransactions (Lịch sử giao dịch)
+CREATE TABLE PaymentTransactions (
+    Id INT IDENTITY(1,1) PRIMARY KEY,
+    UserId INT NOT NULL,
+    Amount DECIMAL(18, 2) NOT NULL,
+    TransactionDate DATETIME2 NOT NULL DEFAULT GETDATE(),
+    Status TINYINT NOT NULL,          -- 0: Pending, 1: Success, 2: Failed
+    TransactionCode NVARCHAR(100),    -- Mã giao dịch từ cổng thanh toán
+
+    CONSTRAINT FK_Transactions_Users FOREIGN KEY (UserId) REFERENCES Users(Id)
 );
 
 -- =============================================

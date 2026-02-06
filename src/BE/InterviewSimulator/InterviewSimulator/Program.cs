@@ -44,6 +44,9 @@ namespace InterviewSimulator
             builder.Services.AddScoped<InterviewSimulator.Services.Interfaces.IEmailService, InterviewSimulator.Services.Implementations.EmailService>();
             builder.Services.AddMemoryCache();
 
+            // HttpClient for PayOS API
+            builder.Services.AddHttpClient();
+
             // CORS Configuration
             builder.Services.AddCors(options =>
             {
