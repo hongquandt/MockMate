@@ -101,10 +101,15 @@ export const authService = {
 
   getUserProfile: async () => {
     const response = await api.get('/auth/profile');
-    if (response.data) {
-      localStorage.setItem('user', JSON.stringify(response.data));
-    }
-    return response.data;
+    return response.data; // { userId, fullName, email, isVip, vipExpirationDate, ... }
+  },
+  
+  updateProfile: async (data) => {
+      const response = await api.put('/auth/update-profile', data);
+      if (response.data.user) {
+          localStorage.setItem('user', JSON.stringify(response.data.user));
+      }
+      return response.data;
   }
 };
 
@@ -116,6 +121,25 @@ export const paymentService = {
       callbackUrl 
     });
     return response.data;
+  }
+};
+
+export const interviewService = {
+  startSession: async (jobPositionId, cvAnalysisData, questions) => {
+    const response = await api.post('/interview/start', { jobPositionId, cvAnalysisData, questions });
+    return response.data; // Returns { sessionId }
+  },
+  submitAnswer: async (sessionId, questionIndex, answerContent, timeTakenSeconds) => {
+    return await api.post(`/interview/${sessionId}/submit-answer`, { questionIndex, answerContent, timeTakenSeconds });
+  },
+  completeSession: async (sessionId, overallFeedback) => {
+    return await api.post(`/interview/${sessionId}/complete`, { overallFeedback });
+  },
+  getHistory: async () => {
+    return (await api.get('/interview/history')).data;
+  },
+  getSessionDetails: async (id) => {
+    return (await api.get(`/interview/${id}`)).data;
   }
 };
 

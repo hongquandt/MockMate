@@ -63,5 +63,50 @@ export const aiService = {
       console.error("AI Analysis Error:", error);
       throw error;
     }
+  },
+
+  generateInterviewQuestions: async (cvText) => {
+    try {
+      const model = genAI.getGenerativeModel({ model: MODEL_NAME });
+
+      const prompt = `
+        ROLE: You are a Technical Interviewer.
+        CONTEXT: The candidate has provided their CV.
+        
+        CV CONTENT:
+        """
+        ${cvText}
+        """
+        
+        TASK:
+        Generate 5 deeper technical interview questions specifically focusing on the "Education" (what they learned) and "Skills" (what they claim to know) sections of the CV.
+        Verify if they truly understand the concepts they listed.
+        
+        OUTPUT JSON FORMAT:
+        [
+            "Question 1",
+            "Question 2",
+            "Question 3",
+            "Question 4",
+            "Question 5"
+        ]
+        
+        Return ONLY valid JSON array.
+      `;
+
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      let text = response.text();
+      
+      text = text.replace(/```json/g, '').replace(/```/g, '').trim();
+      return JSON.parse(text);
+    } catch (error) {
+      console.error("AI Question Generation Error:", error);
+      return [
+        "Could you describe a challenging project you worked on during your studies?",
+        "What are your core technical strengths?",
+        "Explain a technical concept you learned recently."
+      ];
+    }
   }
 };
