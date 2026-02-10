@@ -9,6 +9,7 @@ import ResetPasswordPage from './pages/ResetPasswordPage'
 import UserProfilePage from './pages/UserProfilePage'
 import DashboardPage from './pages/DashboardPage'
 import InterviewPage from './pages/InterviewPage'
+import HistoryPage from './pages/HistoryPage'
 import VipUpgradePage from './pages/VipUpgradePage'
 
 function App() {
@@ -24,6 +25,7 @@ function App() {
         <Route path="/profile" element={<UserProfilePage />} />
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/interview" element={<InterviewPage />} />
+        <Route path="/history" element={<HistoryPage />} />
         <Route path="/vip-upgrade" element={<VipUpgradePage />} />
       </Routes>
     </Router>

@@ -173,3 +173,123 @@ INSERT INTO JobPositions (CategoryId, Title, Requirements) VALUES
 (1, N'React Frontend Developer', N'ReactJS, TypeScript, Redux, TailwindCSS');
 
 GO
+-- 1. Create Roles Table (Bảng Vai trò)
+CREATE TABLE IF NOT EXISTS "Roles" (
+    "Id" SERIAL PRIMARY KEY,
+    "RoleName" VARCHAR(50) NOT NULL UNIQUE,
+    "Description" VARCHAR(200)
+);
+
+-- Seed Initial Roles (Dữ liệu mẫu cho Role)
+INSERT INTO "Roles" ("RoleName", "Description") VALUES ('Admin', 'Administrator') ON CONFLICT ("RoleName") DO NOTHING;
+INSERT INTO "Roles" ("RoleName", "Description") VALUES ('User', 'Candidate/User') ON CONFLICT ("RoleName") DO NOTHING;
+
+
+-- 2. Create Users Table (Bảng Người dùng)
+CREATE TABLE IF NOT EXISTS "Users" (
+    "Id" SERIAL PRIMARY KEY,
+    "FullName" VARCHAR(100),
+    "Email" VARCHAR(100) NOT NULL UNIQUE,
+    "PasswordHash" VARCHAR(500),
+    "PhoneNumber" VARCHAR(20),
+    "AvatarUrl" VARCHAR(500),
+    "CvUrl" VARCHAR(500),
+    "CvExtractedText" TEXT, -- Để lưu text trích xuất từ CV nếu cần
+    "ExperienceYears" INT DEFAULT 0,
+    "IsVip" BOOLEAN DEFAULT FALSE,
+    "VipExpirationDate" TIMESTAMP,
+    "RoleId" INT DEFAULT 2,
+    "CreatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    "IsDeleted" BOOLEAN DEFAULT FALSE,
+    FOREIGN KEY ("RoleId") REFERENCES "Roles"("Id") ON DELETE SET DEFAULT
+);
+
+
+-- 3. Create JobCategories Table (Bảng Danh mục việc làm)
+CREATE TABLE IF NOT EXISTS "JobCategories" (
+    "Id" SERIAL PRIMARY KEY,
+    "Name" VARCHAR(100) NOT NULL,
+    "Description" VARCHAR(500),
+    "IsActive" BOOLEAN DEFAULT TRUE
+);
+
+
+-- 4. Create JobPositions Table (Bảng Vị trí việc làm)
+CREATE TABLE IF NOT EXISTS "JobPositions" (
+    "Id" SERIAL PRIMARY KEY,
+    "Title" VARCHAR(100) NOT NULL,
+    "CategoryId" INT NOT NULL,
+    "IsActive" BOOLEAN DEFAULT TRUE,
+    FOREIGN KEY ("CategoryId") REFERENCES "JobCategories"("Id") ON DELETE CASCADE
+);
+
+
+-- 5. Create InterviewSessions Table (Bảng Phiên phỏng vấn - QUAN TRỌNG)
+CREATE TABLE IF NOT EXISTS "InterviewSessions" (
+    "Id" SERIAL PRIMARY KEY,
+    "UserId" INT NOT NULL,
+    "JobPositionId" INT NOT NULL,
+    "DifficultyLevel" SMALLINT DEFAULT 0, -- 0: Easy, 1: Medium, 2: Hard
+    "DurationMode" SMALLINT DEFAULT 0,    -- 0: Standard, 1: Quick
+    "Status" SMALLINT DEFAULT 0,          -- 0: InProgress, 1: Completed
+    "TotalScore" FLOAT,
+    "CareerFitRating" SMALLINT,
+    "OverallFeedback" TEXT,
+    "CvAnalysisJson" TEXT,                -- CỘT MỚI: Lưu kết quả phân tích CV JSON
+    "StartedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    "EndedAt" TIMESTAMP,
+    FOREIGN KEY ("UserId") REFERENCES "Users"("Id") ON DELETE CASCADE,
+    FOREIGN KEY ("JobPositionId") REFERENCES "JobPositions"("Id") ON DELETE CASCADE
+);
+
+-- Nếu bảng đã tồn tại nhưng thiếu cột CvAnalysisJson, lệnh này sẽ thêm nó vào (An toàn để chạy lại)
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'InterviewSessions' AND column_name = 'CvAnalysisJson') THEN
+        ALTER TABLE "InterviewSessions" ADD COLUMN "CvAnalysisJson" TEXT;
+    END IF;
+END $$;
+
+
+-- 6. Create SessionDetails Table (Bảng Chi tiết câu hỏi/trả lời)
+CREATE TABLE IF NOT EXISTS "SessionDetails" (
+    "Id" SERIAL PRIMARY KEY,
+    "SessionId" INT NOT NULL,
+    "OrderIndex" INT NOT NULL,
+    "QuestionContent" TEXT NOT NULL,
+    "AnswerContent" TEXT,
+    "AnswerAudioUrl" VARCHAR(500),
+    "AiFeedback" TEXT,
+    "Score" FLOAT,
+    "TimeTakenSeconds" INT,
+    "CreatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY ("SessionId") REFERENCES "InterviewSessions"("Id") ON DELETE CASCADE
+);
+
+
+-- 7. Create CareerTasks Table (Bảng Nhiệm vụ nghề nghiệp - Tùy chọn)
+CREATE TABLE IF NOT EXISTS "CareerTasks" (
+    "Id" SERIAL PRIMARY KEY,
+    "UserId" INT NOT NULL,
+    "SessionId" INT,
+    "Title" VARCHAR(200) NOT NULL,
+    "Description" TEXT,
+    "ResourceLink" VARCHAR(500),
+    "Status" SMALLINT DEFAULT 0, -- 0: Pending, 1: Done
+    "DueDate" TIMESTAMP,
+    FOREIGN KEY ("UserId") REFERENCES "Users"("Id") ON DELETE CASCADE,
+    FOREIGN KEY ("SessionId") REFERENCES "InterviewSessions"("Id") ON DELETE SET NULL
+);
+
+
+-- 8. Create PaymentTransactions Table (Bảng Giao dịch thanh toán)
+CREATE TABLE IF NOT EXISTS "PaymentTransactions" (
+    "Id" SERIAL PRIMARY KEY,
+    "UserId" INT NOT NULL,
+    "TransactionCode" VARCHAR(100),
+    "Amount" DECIMAL(18, 2),
+    "Status" SMALLINT DEFAULT 0, -- 0: Pending, 1: Success, 2: Failed
+    "Description" TEXT,
+    "TransactionDate" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY ("UserId") REFERENCES "Users"("Id") ON DELETE CASCADE
+);
