@@ -11,38 +11,40 @@ export const aiService = {
       const model = genAI.getGenerativeModel({ model: MODEL_NAME });
 
       const prompt = `
-        ROLE: You are a strict Senior Technical Recruiter at a top-tier tech company (FAANG level). Your job is to purely evaluate the quality of the CV itself, not just the candidate.
+        ROLE: You are a professional Technical Recruiter. Your goal is to provide an objective, balanced evaluation of the candidate's CV, validating their readiness for the industry while being fair.
 
         CANDIDATE CV CONTENT:
         """
         ${cvText}
         """
 
-        SCORING RUBRIC (Strict Guidelines):
-        1. Impact & Metrics (Weight: 30%): Does the candidate quantify their achievements? (e.g., "Improved latency by 20%" vs "Fixed bugs").
-           - High score: Specific numbers, clear business impact.
-           - Low score: Generic descriptions like "Worked on...", "Helped with...".
-        2. Technical Depth & Relevance (Weight: 30%): Are the skills modern and relevant to the implied role?
-        3. Experience Quality (Weight: 20%): clear progression, ownership of tasks.
-        4. Structure & Clarity (Weight: 20%): logical layout, no typos, professional tone.
+        SCORING RUBRIC (Professional & Objective):
+        1. Impact & Results (Weight: 30%): Look for tangible results. If metrics are missing, look for clear ownership and successful delivery of features/tasks.
+           - High score: Quantifiable impact or complex problem solving.
+           - Medium score: Clear responsibilities and successful completion of tasks.
+           - Low score: Vague descriptions without clear outcomes.
+        2. Technical Proficiency (Weight: 30%): Assess the depth and relevance of skills mentioned.
+        3. Experience Quality (Weight: 20%): Logical progression and relevant projects.
+        4. Structure & Clarity (Weight: 20%): Professional formatting and clarity.
 
         TASK:
         Analyze the CV and provide a structured JSON output.
         
         IMPORTANT: 
-        - Be critical. Do not give high scores (90+) easily. A standard "good" CV is usually 70-75.
-        - Identify the likely "Target Role" based on the content (e.g., Senior Backend Engineer).
-        - Generate 3-5 sharp technical interview questions based on the candidate's WEAKNESSES or highlighted SKILLS.
+        - Be objective. Do not be overly harsh, but do not give high scores for free.
+        - A solid, employable CV should typically score between 70-80. Outstanding ones can go higher (85+).
+        - Highlight specific gaps that, if fixed, would genuinely improve their employability.
+        - Generate 3-5 relevant technical interview questions based on the skills and gaps.
 
         OUTPUT JSON FORMAT:
         {
             "matchScore": number (0-100),
             "skills": ["skill1", "skill2"],
-            "strengths": ["point 1", "point 2"],
-            "weaknesses": ["critique 1", "critique 2"],
-            "summary": "Brief professional summary of the candidate's level.",
+            "strengths": ["Strong point 1", "Strong point 2"],
+            "weaknesses": ["Improvement area 1", "Improvement area 2"],
+            "summary": "Professional summary of the candidate's level.",
             "interviewQuestions": [
-                "Question 1 (e.g. You mentioned X, but how do you handle scaling...?)",
+                "Question 1",
                 "Question 2",
                 "Question 3"
             ]

@@ -10,6 +10,7 @@ import UserProfilePage from './pages/UserProfilePage'
 import DashboardPage from './pages/DashboardPage'
 import InterviewPage from './pages/InterviewPage'
 import HistoryPage from './pages/HistoryPage'
+import CvHistoryPage from './pages/CvHistoryPage'
 import VipUpgradePage from './pages/VipUpgradePage'
 
 function App() {
@@ -26,6 +27,8 @@ function App() {
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/interview" element={<InterviewPage />} />
         <Route path="/history" element={<HistoryPage />} />
+        <Route path="/cv-history" element={<CvHistoryPage />} />
+        <Route path="/cv-history/:id" element={<CvHistoryPage />} />
         <Route path="/vip-upgrade" element={<VipUpgradePage />} />
       </Routes>
     </Router>
