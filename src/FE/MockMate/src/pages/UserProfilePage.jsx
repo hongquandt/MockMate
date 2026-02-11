@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { authService, interviewService } from '../services/api';
+import { uploadService } from '../services/uploadService';
 import logoImg from '../assets/img/z7430605225117_544001c3f21b8fc1cb5af11cb46703c0.jpg';
 
 const UserProfilePage = () => {
@@ -11,9 +12,7 @@ const UserProfilePage = () => {
     const navigate = useNavigate();
     const location = useLocation();
 
-    // Data states
-    const [history, setHistory] = useState([]);
-    const [historyLoading, setHistoryLoading] = useState(false);
+    const [uploading, setUploading] = useState(false);
     const [editMode, setEditMode] = useState(false);
     const [formData, setFormData] = useState({
         fullName: '',
@@ -35,11 +34,7 @@ const UserProfilePage = () => {
         }
     }, [location]);
 
-    useEffect(() => {
-        if (activeTab === 'history') {
-            loadHistory();
-        }
-    }, [activeTab]);
+
 
     const loadUserProfile = async () => {
         try {
@@ -61,15 +56,21 @@ const UserProfilePage = () => {
         }
     };
 
-    const loadHistory = async () => {
+
+
+    const handleImageUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        setUploading(true);
         try {
-            setHistoryLoading(true);
-            const data = await interviewService.getHistory();
-            setHistory(data);
+            const data = await uploadService.uploadFile(file);
+            setFormData(prev => ({ ...prev, avatarUrl: data.secure_url }));
         } catch (error) {
-            console.error("Failed to load history", error);
+            console.error("Upload failed", error);
+            alert("Upload failed. Please try again.");
         } finally {
-            setHistoryLoading(false);
+            setUploading(false);
         }
     };
 
@@ -125,12 +126,7 @@ const UserProfilePage = () => {
                         active={activeTab === 'overview' || activeTab === 'edit'} 
                         onClick={() => setActiveTab('overview')} 
                     />
-                    <NavItem 
-                        icon="history" 
-                        label="Lịch sử phỏng vấn" 
-                        active={activeTab === 'history'} 
-                        onClick={() => setActiveTab('history')} 
-                    />
+
                     <NavItem 
                         icon="workspace_premium" 
                         label="Nâng cấp VIP" 
@@ -245,26 +241,30 @@ const UserProfilePage = () => {
                                                 onClick={() => navigate('/vip-upgrade')}
                                                 className="w-full py-2 bg-white text-orange-600 font-bold rounded-lg shadow hover:bg-amber-50 transition-colors"
                                             >
-                                                Xem gói cước
+                                                Xem gói dịch vụ
                                             </button>
                                         </div>
                                     )}
                                     
                                     <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
                                         <h3 className="font-bold mb-4 text-slate-800">Hoạt động gần đây</h3>
-                                        <ul className="space-y-3">
-                                            <li className="flex items-center gap-3 text-sm text-slate-500">
-                                                <span className="w-2 h-2 rounded-full bg-green-500"></span>
-                                                Đăng nhập thành công
-                                            </li>
-                                        </ul>
+                                        <button 
+                                            onClick={() => navigate('/cv-history')}
+                                            className="w-full flex items-center justify-between p-3 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors text-slate-700 text-sm font-medium"
+                                        >
+                                            <span className="flex items-center gap-2">
+                                                <span className="material-symbols-outlined text-purple-600">history_edu</span>
+                                                Xem Lịch sử CV & Phỏng vấn
+                                            </span>
+                                            <span className="material-symbols-outlined text-slate-400">arrow_forward</span>
+                                        </button>
                                     </div>
                                 </div>
                             </div>
                         )}
 
                         {activeTab === 'edit' && (
-                            <div className="max-w-2xl">
+                            <div className="max-w-2xl mx-auto">
                                 <div className="flex items-center gap-4 mb-6">
                                     <button onClick={() => setActiveTab('overview')} className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-600">
                                         <span className="material-symbols-outlined">arrow_back</span>
@@ -279,7 +279,7 @@ const UserProfilePage = () => {
                                             <span className="absolute left-3 top-3 text-slate-400 material-symbols-outlined text-[20px]">person</span>
                                             <input 
                                                 type="text" 
-                                                className="w-full bg-slate-50 border border-slate-300 rounded-xl py-2.5 pl-10 pr-4 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-colors text-slate-900"
+                                                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 pl-10 pr-4 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-colors text-slate-900"
                                                 value={formData.fullName}
                                                 onChange={(e) => setFormData({...formData, fullName: e.target.value})}
                                                 required
@@ -292,25 +292,52 @@ const UserProfilePage = () => {
                                         <div className="relative">
                                             <span className="absolute left-3 top-3 text-slate-400 material-symbols-outlined text-[20px]">phone</span>
                                             <input 
-                                                type="text" 
-                                                className="w-full bg-slate-50 border border-slate-300 rounded-xl py-2.5 pl-10 pr-4 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-colors text-slate-900"
+                                                type="tel" 
+                                                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 pl-10 pr-4 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-colors text-slate-900"
                                                 value={formData.phoneNumber}
                                                 onChange={(e) => setFormData({...formData, phoneNumber: e.target.value})}
+                                                placeholder="0912345678"
                                             />
                                         </div>
                                     </div>
 
                                     <div className="space-y-2">
-                                        <label className="text-sm font-medium text-slate-700">Avatar URL (Link ảnh)</label>
-                                        <div className="relative">
-                                            <span className="absolute left-3 top-3 text-slate-400 material-symbols-outlined text-[20px]">image</span>
-                                            <input 
-                                                type="text" 
-                                                className="w-full bg-slate-50 border border-slate-300 rounded-xl py-2.5 pl-10 pr-4 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-colors text-slate-900"
-                                                value={formData.avatarUrl}
-                                                onChange={(e) => setFormData({...formData, avatarUrl: e.target.value})}
-                                                placeholder="https://example.com/avatar.jpg"
-                                            />
+                                        <label className="text-sm font-medium text-slate-700">Ảnh đại diện</label>
+                                        <div className="flex items-center gap-4">
+                                            <div className="relative w-20 h-20 rounded-full overflow-hidden border border-slate-200">
+                                                {uploading ? (
+                                                    <div className="absolute inset-0 flex items-center justify-center bg-slate-100">
+                                                        <span className="material-symbols-outlined animate-spin text-purple-600">progress_activity</span>
+                                                    </div>
+                                                ) : (
+                                                    <img 
+                                                        src={formData.avatarUrl || user.avatarUrl || 'https://via.placeholder.com/150'} 
+                                                        alt="Avatar Preview" 
+                                                        className="w-full h-full object-cover"
+                                                        onError={(e) => { e.target.onerror = null; e.target.src = 'https://via.placeholder.com/150'; }}
+                                                    />
+                                                )}
+                                            </div>
+                                            <div className="flex-1">
+                                                <input 
+                                                    type="file" 
+                                                    accept="image/*"
+                                                    onChange={handleImageUpload}
+                                                    className="block w-full text-sm text-slate-500
+                                                        file:mr-4 file:py-2 file:px-4
+                                                        file:rounded-full file:border-0
+                                                        file:text-sm file:font-semibold
+                                                        file:bg-purple-50 file:text-purple-700
+                                                        hover:file:bg-purple-100
+                                                    "
+                                                    disabled={uploading}
+                                                />
+                                                <p className="mt-1 text-xs text-slate-400">
+                                                    {formData.avatarUrl && formData.avatarUrl !== user.avatarUrl 
+                                                        ? <span className="text-green-600 font-bold">Ảnh đã tải lên. Nhấn "Lưu thay đổi" để áp dụng.</span>
+                                                        : "Hỗ trợ: JPG, PNG, GIF. Tối đa 5MB."}
+                                                </p>
+                                            </div>
                                         </div>
                                     </div>
 
@@ -330,51 +357,6 @@ const UserProfilePage = () => {
                                         </button>
                                     </div>
                                 </form>
-                            </div>
-                        )}
-
-                        {activeTab === 'history' && (
-                            <div>
-                                <h3 className="font-bold text-xl mb-6 flex items-center gap-2 text-slate-800">
-                                    <span className="material-symbols-outlined text-blue-600">history</span>
-                                    Lịch sử phỏng vấn
-                                </h3>
-                                
-                                {historyLoading ? (
-                                    <div className="text-center py-10 text-slate-500">Đang tải lịch sử...</div>
-                                ) : history.length === 0 ? (
-                                    <div className="text-center py-10 bg-white rounded-2xl border border-slate-200 shadow-sm">
-                                        <p className="text-slate-500 mb-4">Bạn chưa có buổi phỏng vấn nào.</p>
-                                        <button 
-                                            onClick={() => navigate('/dashboard')}
-                                            className="px-4 py-2 bg-purple-600 rounded-lg text-white font-bold hover:bg-purple-700"
-                                        >
-                                            Bắt đầu ngay
-                                        </button>
-                                    </div>
-                                ) : (
-                                    <div className="space-y-4">
-                                        {history.map(session => (
-                                            <div key={session.id} className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex justify-between items-center hover:shadow-md transition-shadow">
-                                                <div>
-                                                    <div className="flex items-center gap-3 mb-1">
-                                                        <span className="font-bold text-slate-800">Phỏng vấn #{session.id}</span>
-                                                        <span className={`text-xs px-2 py-0.5 rounded border ${session.status === 1 ? 'bg-green-50 text-green-700 border-green-200' : 'bg-yellow-50 text-yellow-700 border-yellow-200'}`}>
-                                                            {session.status === 1 ? 'Hoàn thành' : 'Đang thực hiện'}
-                                                        </span>
-                                                    </div>
-                                                    <p className="text-sm text-slate-500">Ngày: {new Date(session.startedAt).toLocaleString('vi-VN')}</p>
-                                                </div>
-                                                <button 
-                                                    onClick={() => navigate('/history')} 
-                                                    className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm font-medium transition-colors"
-                                                >
-                                                    Xem chi tiết
-                                                </button>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
                             </div>
                         )}
                     </div>

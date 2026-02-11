@@ -16,27 +16,47 @@ const InterviewPage = () => {
     const [sessionStartTime, setSessionStartTime] = useState(Date.now()); // Time when session started
     const [elapsedTime, setElapsedTime] = useState(0); // Total elapsed seconds
 
-    // Default questions if none provided
-    const questions = analysisData?.interviewQuestions || [
-        "Please introduce yourself and highlight your key skills.",
-        "What motivated you to choose your field of study?",
-        "Describe a challenging technical problem you solved recently."
-    ];
+    const [answers, setAnswers] = useState({}); // Store all answers locally: { index: "answer" }
+    const [saving, setSaving] = useState(false);
+    const [showSaveSuccess, setShowSaveSuccess] = useState(false);
+
+    // Fallback data if page is refreshed or accessed directly
+    const defaultAnalysisData = {
+        interviewQuestions: [
+            "Please introduce yourself and highlight your key skills.",
+            "What motivated you to choose your field of study?",
+            "Describe a challenging technical problem you solved recently."
+        ],
+        skills: ["General", "Communication"],
+        matchScore: 0
+    };
+
+    const activeAnalysisData = analysisData || defaultAnalysisData;
+    const questions = activeAnalysisData.interviewQuestions;
 
     useEffect(() => {
         const startInterview = async () => {
-            if (analysisData && questions.length > 0) {
+            if (questions.length > 0) {
                 try {
                     // Start session API call
-                    const data = await interviewService.startSession(1, analysisData, questions);
-                    setSessionId(data.sessionId);
-                    setSessionStartTime(Date.now());
+                    const data = await interviewService.startSession(1, activeAnalysisData, questions);
+                    if (data && data.sessionId) {
+                        setSessionId(data.sessionId);
+                        setSessionStartTime(Date.now());
+                    } else {
+                        console.error("Session started but no index returned", data);
+                    }
                 } catch (error) {
                     console.error("Failed to start session:", error);
                 }
             }
         };
         startInterview();
+
+        return () => {
+            if (window.speechSynthesis) window.speechSynthesis.cancel();
+            if (window.recognitionInstance) window.recognitionInstance.stop();
+        };
     }, []);
 
     // Timer effect
@@ -47,10 +67,11 @@ const InterviewPage = () => {
         return () => clearInterval(timer);
     }, [sessionStartTime]);
 
-    // Reset question start time when question changes
+    // Reset question start time and load answer when question changes
     useEffect(() => {
         setStartTime(Date.now());
-    }, [currentQuestionIndex]);
+        setUserAnswer(answers[currentQuestionIndex] || "");
+    }, [currentQuestionIndex]); // Removed 'answers' dependency to avoid loop, managed manually
 
     const formatTime = (seconds) => {
         const mins = Math.floor(seconds / 60);
@@ -58,13 +79,35 @@ const InterviewPage = () => {
         return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     };
 
-    const saveAnswer = async (index, answer) => {
-        if (sessionId && answer.trim()) {
+    const handleAnswerChange = (val) => {
+        setUserAnswer(val);
+        setAnswers(prev => ({
+            ...prev,
+            [currentQuestionIndex]: val
+        }));
+    };
+
+    const saveCurrentAnswer = async (manual = false) => {
+        if (sessionId && userAnswer.trim()) {
+            setSaving(true);
             try {
                 const timeTaken = Math.floor((Date.now() - startTime) / 1000);
-                await interviewService.submitAnswer(sessionId, index, answer, timeTaken);
+                await interviewService.submitAnswer(sessionId, currentQuestionIndex, userAnswer, timeTaken);
+                
+                // Update local state map firmly
+                setAnswers(prev => ({
+                    ...prev,
+                    [currentQuestionIndex]: userAnswer
+                }));
+
+                if (manual) {
+                    setShowSaveSuccess(true);
+                    setTimeout(() => setShowSaveSuccess(false), 2000);
+                }
             } catch (error) {
                 console.error("Failed to save answer:", error);
+            } finally {
+                setSaving(false);
             }
         }
     };
@@ -74,18 +117,14 @@ const InterviewPage = () => {
     // --- Text-to-Speech (TTS) ---
     const speakText = (text) => {
         if ('speechSynthesis' in window) {
-            // Cancel any current speech
             window.speechSynthesis.cancel();
-
             const utterance = new SpeechSynthesisUtterance(text);
-            utterance.lang = 'en-US'; // Set language, maybe make dynamic later?
+            utterance.lang = 'en-US'; 
             utterance.rate = 1.0;
             utterance.pitch = 1.0;
-
             utterance.onstart = () => setIsSpeaking(true);
             utterance.onend = () => setIsSpeaking(false);
             utterance.onerror = () => setIsSpeaking(false);
-
             window.speechSynthesis.speak(utterance);
         } else {
             alert("Your browser does not support text-to-speech.");
@@ -106,14 +145,11 @@ const InterviewPage = () => {
         }
 
         const recognition = new SpeechRecognition();
-        recognition.lang = 'en-US'; // Or 'vi-VN' depending on preference
+        recognition.lang = 'en-US'; // Default to English for tech interviews
         recognition.interimResults = true;
         recognition.continuous = true;
 
-        recognition.onstart = () => {
-            setIsListening(true);
-        };
-
+        recognition.onstart = () => setIsListening(true);
         recognition.onresult = (event) => {
             let finalTranscript = '';
             for (let i = event.resultIndex; i < event.results.length; ++i) {
@@ -122,38 +158,27 @@ const InterviewPage = () => {
                 }
             }
             if (finalTranscript) {
-                 setUserAnswer(prev => prev + " " + finalTranscript);
+                 handleAnswerChange(userAnswer + " " + finalTranscript); // Use handleAnswerChange to sync state
             }
         };
-
         recognition.onerror = (event) => {
-            console.error("Speech recognition error", event.error);
+            console.error("Speech error", event.error);
             setIsListening(false);
         };
-
-        recognition.onend = () => {
-            setIsListening(false);
-        };
+        recognition.onend = () => setIsListening(false);
 
         recognition.start();
-        
-        // Store recognition instance to stop it later if needed (simple implementation)
         window.recognitionInstance = recognition;
     };
 
     const stopListening = () => {
-        if (window.recognitionInstance) {
-            window.recognitionInstance.stop();
-        }
+        if (window.recognitionInstance) window.recognitionInstance.stop();
         setIsListening(false);
     };
 
     const toggleListening = () => {
-        if (isListening) {
-            stopListening();
-        } else {
-            startListening();
-        }
+        if (isListening) stopListening();
+        else startListening();
     };
 
     return (
@@ -181,19 +206,29 @@ const InterviewPage = () => {
 
             {/* Main Content */}
             <main className="flex-1 flex flex-col md:flex-row">
-                {/* Left Panel: Interviewer / Question */}
+                {/* Left Panel */}
                 <div className="flex-1 p-8 flex flex-col items-center justify-center border-r border-slate-700 relative">
-                    {/* AI Avatar Placeholder */}
-                    <div className={`w-40 h-40 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-full flex items-center justify-center mb-10 shadow-lg shadow-purple-500/20 ${isSpeaking ? 'animate-pulse scale-110 duration-700' : ''}`}>
-                        <span className="material-symbols-outlined text-6xl text-white">smart_toy</span>
+                    {/* Toast Notification */}
+                    {showSaveSuccess && (
+                        <div className="absolute top-4 bg-green-500 text-white px-4 py-2 rounded-full shadow-lg flex items-center gap-2 animate-bounce">
+                            <span className="material-symbols-outlined text-sm">check_circle</span>
+                            Đã lưu câu trả lời
+                        </div>
+                    )}
+
+                    {/* AI Avatar */}
+                    <div className={`w-32 h-32 md:w-40 md:h-40 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-full flex items-center justify-center mb-8 shadow-lg shadow-purple-500/20 ${isSpeaking ? 'animate-pulse scale-105 duration-700' : ''}`}>
+                        <span className="material-symbols-outlined text-5xl md:text-6xl text-white">smart_toy</span>
                     </div>
 
-                    <div className="max-w-2xl text-center space-y-6">
-                        <div className="inline-block px-4 py-1.5 bg-slate-800 rounded-full text-sm font-medium text-slate-400 mb-4">
-                            Câu hỏi {currentQuestionIndex + 1} / {questions.length}
+                    <div className="max-w-2xl text-center space-y-6 w-full">
+                        <div className="flex items-center justify-center gap-2 mb-4">
+                            <div className="px-4 py-1.5 bg-slate-800 rounded-full text-sm font-medium text-slate-400">
+                                Câu hỏi {currentQuestionIndex + 1} / {questions.length}
+                            </div>
                         </div>
                         
-                        <h2 className="text-3xl font-bold leading-tight">
+                        <h2 className="text-2xl md:text-3xl font-bold leading-tight min-h-[80px] flex items-center justify-center">
                             {currentQuestion}
                         </h2>
                         
@@ -211,68 +246,83 @@ const InterviewPage = () => {
                     </div>
 
                     {/* Answer Area */}
-                    <div className="w-full max-w-2xl mt-8">
-                        <div className="relative">
+                    <div className="w-full max-w-2xl mt-8 relative">
+                        <div className="relative group">
                             <textarea 
                                 value={userAnswer}
-                                onChange={(e) => setUserAnswer(e.target.value)}
+                                onChange={(e) => handleAnswerChange(e.target.value)}
                                 placeholder="Nhập câu trả lời của bạn hoặc bấm Micro để nói..."
-                                className="w-full h-32 bg-slate-800 border border-slate-600 rounded-xl p-4 pr-12 text-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                className="w-full h-40 bg-slate-800 border border-slate-600 rounded-xl p-4 pr-12 text-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
                             ></textarea>
                             
+                            <div className="absolute bottom-4 right-4 flex gap-2">
+                                <button 
+                                    onClick={toggleListening}
+                                    className={`p-2 rounded-full transition-all ${isListening ? 'bg-red-500 animate-pulse text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}
+                                    title="Bấm để nói"
+                                >
+                                    <span className="material-symbols-outlined text-sm md:text-base">
+                                        {isListening ? 'mic_off' : 'mic'}
+                                    </span>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div className="flex justify-between items-center mt-2">
+                             <p className="text-xs text-slate-500 italic">
+                                {isListening ? "Đang nghe... (Nói tiếng Anh/Việt)" : "Tips: Bạn có thể nhập text hoặc dùng giọng nói."}
+                            </p>
                             <button 
-                                onClick={toggleListening}
-                                className={`absolute bottom-4 right-4 p-2 rounded-full transition-all ${isListening ? 'bg-red-500 animate-pulse' : 'bg-slate-600 hover:bg-slate-500'}`}
-                                title="Bấm để nói"
+                                onClick={() => saveCurrentAnswer(true)}
+                                disabled={!userAnswer.trim() || saving}
+                                className="flex items-center gap-2 px-4 py-1.5 bg-blue-600/20 text-blue-400 hover:bg-blue-600/30 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                                <span className="material-symbols-outlined text-white">
-                                    {isListening ? 'mic_off' : 'mic'}
-                                </span>
+                                {saving ? <span className="material-symbols-outlined animate-spin text-sm">sync</span> : <span className="material-symbols-outlined text-sm">save</span>}
+                                {saving ? "Đang lưu..." : "Lưu câu trả lời"}
                             </button>
                         </div>
-                        {isListening && <p className="text-xs text-red-400 mt-2 text-right">Đang nghe... (Nói tiếng Anh/Việt tùy vào trình duyệt)</p>}
                     </div>
 
                     {/* Controls */}
-                    <div className="mt-8 flex justify-center gap-4">
+                    <div className="mt-8 flex justify-center gap-4 w-full max-w-2xl">
                         <button 
                             disabled={currentQuestionIndex === 0}
                             onClick={() => {
-                                saveAnswer(currentQuestionIndex, userAnswer); // Save current before moving back? Or implies simple navigation. let's save.
+                                saveCurrentAnswer(); // Auto-save on nav
                                 setCurrentQuestionIndex(prev => prev - 1);
-                                setUserAnswer(""); // Should load previous answer if possible. For now, clear.
                                 stopSpeaking();
                             }}
-                            className="p-3 bg-slate-800 rounded-full hover:bg-slate-700 disabled:opacity-50 transition-colors"
+                            className="flex-1 p-3 bg-slate-800 rounded-xl hover:bg-slate-700 disabled:opacity-50 transition-colors flex items-center justify-center gap-2 font-medium"
                         >
                             <span className="material-symbols-outlined">arrow_back</span>
+                            Câu trước
                         </button>
                         
                         {currentQuestionIndex < questions.length - 1 ? (
                             <button 
                                 onClick={() => {
-                                    saveAnswer(currentQuestionIndex, userAnswer);
+                                    saveCurrentAnswer(); // Auto-save on nav
                                     setCurrentQuestionIndex(prev => prev + 1);
-                                    setUserAnswer("");
                                     stopSpeaking();
                                 }}
-                                className="p-3 bg-slate-800 rounded-full hover:bg-slate-700 disabled:opacity-50 transition-colors text-white font-bold"
+                                className="flex-[2] p-3 bg-purple-600 hover:bg-purple-700 rounded-xl transition-colors text-white font-bold flex items-center justify-center gap-2 shadow-lg shadow-purple-900/20"
                             >
                                 Câu tiếp theo
-                                <span className="material-symbols-outlined ml-2 align-middle">arrow_forward</span>
+                                <span className="material-symbols-outlined">arrow_forward</span>
                             </button>
                         ) : (
                             <button 
                                 onClick={async () => {
-                                    await saveAnswer(currentQuestionIndex, userAnswer);
+                                    await saveCurrentAnswer();
                                     if (sessionId) {
                                         await interviewService.completeSession(sessionId, "Completed by User");
                                     }
-                                    navigate('/history'); // Go to history page after finishing
+                                    navigate(`/cv-history/${sessionId}`);
                                 }}
-                                className="px-6 py-3 bg-green-600 hover:bg-green-500 rounded-full font-bold transition-all shadow-lg hover:shadow-green-500/30"
+                                className="flex-[2] px-6 py-3 bg-green-600 hover:bg-green-500 rounded-xl font-bold transition-all shadow-lg hover:shadow-green-500/30 flex items-center justify-center gap-2"
                             >
-                                Hoàn thành & Xem kết quả
+                                <span className="material-symbols-outlined">check_circle</span>
+                                Hoàn thành
                             </button>
                         )}
                     </div>

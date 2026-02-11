@@ -20,16 +20,44 @@ namespace InterviewSimulator.Controllers
         }
 
         // POST: api/interview/start
+        // POST: api/interview/start
         [HttpPost("start")]
         public async Task<IActionResult> StartSession([FromBody] StartSessionRequest request)
         {
             var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
 
+            // Ensure JobPosition exists to avoid FK error
+            var jobPositionId = request.JobPositionId > 0 ? request.JobPositionId : 1;
+            
+            // Check if exists
+            if (!await _context.JobPositions.AnyAsync(j => j.Id == jobPositionId))
+            {
+                // Try to find ANY job position
+                var firstJob = await _context.JobPositions.FirstOrDefaultAsync();
+                if (firstJob != null)
+                {
+                    jobPositionId = firstJob.Id;
+                }
+                else
+                {
+                    // Create default if table is empty
+                    var category = new JobCategory { Name = "General", Description = "General Category" };
+                    _context.JobCategories.Add(category);
+                    await _context.SaveChangesAsync();
+
+                    var position = new JobPosition { Title = "General Developer", CategoryId = category.Id, Description = "Default Position" };
+                    _context.JobPositions.Add(position);
+                    await _context.SaveChangesAsync();
+                    
+                    jobPositionId = position.Id;
+                }
+            }
+
             // 1. Create Interview Session
             var session = new InterviewSession
             {
                 UserId = userId,
-                JobPositionId = request.JobPositionId > 0 ? request.JobPositionId : 1, // Default if not provided
+                JobPositionId = jobPositionId, 
                 StartedAt = DateTime.UtcNow,
                 Status = 0, // In Progress
                 CvAnalysisJson = JsonSerializer.Serialize(request.CvAnalysisData),
@@ -54,7 +82,7 @@ namespace InterviewSimulator.Controllers
                 await _context.SaveChangesAsync();
             }
 
-            return Ok(new { SessionId = session.Id });
+            return Ok(new { sessionId = session.Id });
         }
 
         // POST: api/interview/submit-answer
@@ -116,9 +144,11 @@ namespace InterviewSimulator.Controllers
                 {
                     s.Id,
                     s.StartedAt,
-                    s.EndedAt, // Include EndedAt to calculate duration
+                    s.EndedAt, 
                     s.Status,
-                    JobPosition = s.JobPositionId // If you included JobPosition navigation, use s.JobPosition.Title
+                    JobPosition = s.JobPosition.Title,
+                    CvAnalysisJson = s.CvAnalysisJson,
+                    TotalScore = s.TotalScore
                 })
                 .ToListAsync();
 
