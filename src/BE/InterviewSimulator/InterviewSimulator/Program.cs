@@ -16,7 +16,15 @@ namespace InterviewSimulator
 
             // DB Configuration
             builder.Services.AddDbContext<InterviewSimulator.Models.MockMateDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DBDefault")));
+                options.UseNpgsql(builder.Configuration.GetConnectionString("DBDefault"),
+                    npgsqlOptions => 
+                    {
+                        npgsqlOptions.EnableRetryOnFailure(
+                            maxRetryCount: 5, 
+                            maxRetryDelay: TimeSpan.FromSeconds(30), 
+                            errorCodesToAdd: null);
+                        npgsqlOptions.CommandTimeout(300);
+                    }));
 
             // Auth Configuration
             builder.Services.AddAuthentication(options =>
