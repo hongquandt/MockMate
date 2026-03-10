@@ -6,7 +6,7 @@ import logoImg from '../assets/img/z7430605225117_544001c3f21b8fc1cb5af11cb46703
 const InterviewPage = () => {
     const location = useLocation();
     const navigate = useNavigate();
-    const { analysisData, cvText } = location.state || {}; // Expect cvText if we want to generate more
+    const { analysisData, setupData, cvText } = location.state || {}; // Expect cvText if we want to generate more
     const [sessionId, setSessionId] = useState(null);
     const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
     const [isSpeaking, setIsSpeaking] = useState(false);
@@ -338,12 +338,29 @@ const InterviewPage = () => {
                     <div className="bg-slate-700/50 p-4 rounded-xl text-sm text-slate-300 leading-relaxed mb-6">
                         Dựa trên CV của bạn, hãy tập trung vào các từ khóa: 
                         <div className="flex flex-wrap gap-2 mt-3">
-                            {analysisData?.skills?.map((skill, i) => (
-                                <span key={i} className="px-2 py-1 bg-slate-600 rounded text-xs text-white">
+                            {(setupData?.keywords || analysisData?.skills || []).map((skill, i) => (
+                                <span key={i} className="px-2 py-1 bg-slate-600 rounded text-xs text-white border border-slate-500">
                                     {skill}
                                 </span>
                             ))}
                         </div>
+                        
+                        {setupData && (
+                            <div className="mt-4 pt-4 border-t border-slate-600 space-y-2">
+                                <div className="flex justify-between">
+                                    <span className="text-slate-400">Ngành nghề:</span>
+                                    <span className="font-medium text-white">{setupData.industry}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-slate-400">Độ khó:</span>
+                                    <span className="font-medium text-white">{setupData.difficulty}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-slate-400">Thể loại:</span>
+                                    <span className="font-medium text-white">{setupData.interviewType}</span>
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
