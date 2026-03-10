@@ -121,6 +121,22 @@
   },
   {
     "ContainingType": "InterviewSimulator.Controllers.AuthController",
+    "Method": "UpdateProfile",
+    "RelativePath": "api/Auth/update-profile",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "InterviewSimulator.Controllers.UpdateProfileRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "InterviewSimulator.Controllers.AuthController",
     "Method": "VerifyOtp",
     "RelativePath": "api/Auth/verify-otp",
     "HttpMethod": "POST",
@@ -130,6 +146,90 @@
       {
         "Name": "request",
         "Type": "InterviewSimulator.DTOs.VerifyOtpRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "InterviewSimulator.Controllers.InterviewController",
+    "Method": "GetSessionDetails",
+    "RelativePath": "api/Interview/{id}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "InterviewSimulator.Controllers.InterviewController",
+    "Method": "CompleteSession",
+    "RelativePath": "api/Interview/{sessionId}/complete",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "sessionId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "request",
+        "Type": "InterviewSimulator.Controllers.CompleteSessionRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "InterviewSimulator.Controllers.InterviewController",
+    "Method": "SubmitAnswer",
+    "RelativePath": "api/Interview/{sessionId}/submit-answer",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "sessionId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "request",
+        "Type": "InterviewSimulator.Controllers.SubmitAnswerRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "InterviewSimulator.Controllers.InterviewController",
+    "Method": "GetHistory",
+    "RelativePath": "api/Interview/history",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "InterviewSimulator.Controllers.InterviewController",
+    "Method": "StartSession",
+    "RelativePath": "api/Interview/start",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "InterviewSimulator.Controllers.StartSessionRequest",
         "IsRequired": true
       }
     ],

@@ -356,11 +356,11 @@ const DashboardPage = () => {
                                         )}
                                         
                                         <button 
-                                            onClick={() => navigate('/interview', { state: { analysisData: analysis } })}
+                                            onClick={() => navigate('/interview-setup', { state: { analysisData: analysis } })}
                                             className="w-full py-4 bg-gradient-to-r from-primary to-blue-600 hover:from-primary-dark hover:to-blue-700 text-white font-bold rounded-xl shadow-lg shadow-primary/25 flex items-center justify-center gap-2 transition-all transform hover:scale-[1.02]"
                                         >
-                                            <span className="material-symbols-outlined">video_camera_front</span>
-                                            Bắt đầu Phỏng vấn Thử ngay
+                                            <span className="material-symbols-outlined">settings</span>
+                                            Thiết lập Buổi phỏng vấn
                                         </button>
                                     </div>
                                 </div>
