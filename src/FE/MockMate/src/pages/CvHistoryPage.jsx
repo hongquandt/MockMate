@@ -186,15 +186,58 @@ const CvHistoryPage = () => {
 
                             {/* Interview Q&A Preview */}
                             {selectedSession.questions && selectedSession.questions.length > 0 && (
-                                <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 opacity-80 hover:opacity-100 transition-opacity">
+                                <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
                                     <h3 className="font-bold text-lg text-slate-800 mb-4 flex items-center gap-2">
                                         <span className="material-symbols-outlined text-orange-500">forum</span>
-                                        Câu hỏi phỏng vấn đã tạo
+                                        Câu hỏi phỏng vấn đã trả lời
                                     </h3>
-                                    <div className="space-y-3">
+                                    
+                                    {selectedSession.overallFeedback && selectedSession.overallFeedback !== "Completed by User" && selectedSession.overallFeedback !== "Interview Started" && (
+                                        <div className="bg-purple-50 border border-purple-200 rounded-xl p-4 mb-6">
+                                            <h4 className="font-bold text-purple-700 mb-2 flex items-center gap-1">
+                                                <span className="material-symbols-outlined text-sm">stars</span>
+                                                Nhận xét tổng quan buổi phỏng vấn
+                                                {selectedSession.totalScore != null && (
+                                                    <span className="ml-auto bg-purple-600 text-white px-2 py-0.5 rounded text-xs">
+                                                        Điểm: {selectedSession.totalScore}/10
+                                                    </span>
+                                                )}
+                                            </h4>
+                                            <p className="text-sm text-slate-700 leading-relaxed">{selectedSession.overallFeedback}</p>
+                                        </div>
+                                    )}
+
+                                    <div className="space-y-6">
                                         {selectedSession.questions.map((q, idx) => (
-                                            <div key={idx} className="p-3 bg-slate-50 rounded-lg border border-slate-100">
-                                                <p className="font-medium text-slate-700 text-sm">Q{idx+1}: {q.questionContent}</p>
+                                            <div key={idx} className="p-4 bg-slate-50 rounded-xl border border-slate-200 shadow-sm relative overflow-hidden">
+                                                <div className="absolute top-0 left-0 w-1 h-full bg-blue-500"></div>
+                                                <p className="font-bold text-slate-800 text-sm mb-3">
+                                                    Q{idx+1}: {q.questionContent}
+                                                </p>
+                                                
+                                                <div className="bg-white border border-slate-100 p-3 rounded-lg mb-3">
+                                                    <span className="text-xs font-bold text-slate-400 uppercase mb-1 block">Câu trả lời của bạn:</span>
+                                                    <p className="text-sm text-slate-600">
+                                                        {q.answerContent || <span className="italic text-slate-400">Không có câu trả lời</span>}
+                                                    </p>
+                                                </div>
+
+                                                {q.aiFeedback && (
+                                                    <div className="bg-green-50 border border-green-100 p-3 rounded-lg flex items-start flex-col gap-2">
+                                                        <div className="flex items-center justify-between w-full">
+                                                            <span className="text-xs font-bold text-green-700 uppercase flex items-center gap-1">
+                                                                <span className="material-symbols-outlined text-[14px]">auto_awesome</span>
+                                                                AI Đánh giá
+                                                            </span>
+                                                            {q.score != null && (
+                                                                <span className="text-xs font-bold bg-green-200 text-green-800 px-2 py-0.5 rounded">
+                                                                    {q.score}/10
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        <p className="text-sm text-green-900">{q.aiFeedback}</p>
+                                                    </div>
+                                                )}
                                             </div>
                                         ))}
                                     </div>
