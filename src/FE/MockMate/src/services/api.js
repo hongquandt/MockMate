@@ -132,8 +132,8 @@ export const interviewService = {
   submitAnswer: async (sessionId, questionIndex, answerContent, timeTakenSeconds) => {
     return await api.post(`/interview/${sessionId}/submit-answer`, { questionIndex, answerContent, timeTakenSeconds });
   },
-  completeSession: async (sessionId, overallFeedback) => {
-    return await api.post(`/interview/${sessionId}/complete`, { overallFeedback });
+  completeSession: async (sessionId, aiResult) => {
+    return await api.post(`/interview/${sessionId}/complete`, aiResult);
   },
   getHistory: async () => {
     return (await api.get('/interview/history')).data;

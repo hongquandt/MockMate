@@ -110,5 +110,106 @@ export const aiService = {
         "Explain a technical concept you learned recently."
       ];
     }
+  },
+
+  generateCustomQuestions: async (cvText, setupData) => {
+    try {
+      const model = genAI.getGenerativeModel({ model: MODEL_NAME });
+
+      const prompt = `
+        ROLE: You are an Expert Technical Recruiter & Interviewer.
+        CONTEXT: The candidate has provided their CV and selected specific criteria for this mock interview.
+        
+        CV CONTENT:
+        """
+        ${cvText}
+        """
+
+        INTERVIEW CRITERIA:
+        - Industry: ${setupData.industry}
+        - Job Description: ${setupData.jobDescription || "Not provided, focus on their CV matching the industry."}
+        - Difficulty/Level: ${setupData.difficulty}
+        - Interview Type: ${setupData.interviewType} (Knowledge, Behavioral, Situational, etc.)
+        - Target Skills/Keywords to focus on: ${setupData.keywords?.join(", ")}
+        - Language to generate questions in: ${setupData.language}
+        
+        TASK:
+        Generate 5 specific, highly relevant interview questions tailored EXACTLY to the above criteria and the candidate's CV level.
+        If the interview type is Behavioral, generate questions based on the STAR method related to their past experience.
+        If it's Situational, present a hypothetical scenario relevant to the job and level.
+        The wording should be entirely in: ${setupData.language}.
+        
+        OUTPUT JSON FORMAT:
+        [
+            "Question 1",
+            "Question 2",
+            "Question 3",
+            "Question 4",
+            "Question 5"
+        ]
+        
+        Return ONLY a valid JSON array of format string[].
+      `;
+
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      let text = response.text();
+      
+      text = text.replace(/```json/g, '').replace(/```/g, '').trim();
+      return JSON.parse(text);
+    } catch (error) {
+      console.error("AI Custom Question Generation Error:", error);
+      // Fallback
+      return [
+        "Xin bạn hãy giới thiệu ngắn gọn bản thân (Please introduce yourself).",
+        "Kể về một dự án khó nhằn bạn từng tham gia trong công việc.",
+        "Điểm mạnh nhất của bạn đối với vị trí này là gì?"
+      ];
+    }
+  },
+
+  gradeInterviewAnswers: async (qaArray) => {
+    try {
+      const model = genAI.getGenerativeModel({ model: MODEL_NAME });
+
+      const prompt = `
+        ROLE: You are an expert Technical Interviewer.
+        CONTEXT: The candidate has completed a technical interview. I will provide you with the questions asked and the candidate's answers.
+
+        Q&A PAIRS:
+        """
+        ${JSON.stringify(qaArray, null, 2)}
+        """
+
+        TASK:
+        Grade each answer and provide overall feedback for the interview session.
+        Be constructive, objective, and professional.
+
+        OUTPUT JSON FORMAT:
+        {
+          "totalScore": number (0-10),
+          "overallFeedback": "A summary of their performance across all questions, highlighting key strengths and areas for improvement.",
+          "details": [
+            {
+              "questionIndex": number,
+              "score": number (0-10, grade for this specific question),
+              "aiFeedback": "Specific feedback for this answer, what they did well, what was missing."
+            }
+          ]
+        }
+
+        Return ONLY valid JSON.
+      `;
+
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      let text = response.text();
+      
+      text = text.replace(/```json/g, '').replace(/```/g, '').trim();
+      return JSON.parse(text);
+    } catch (error) {
+      console.error("AI Grading Error:", error);
+      throw error;
+    }
   }
 };

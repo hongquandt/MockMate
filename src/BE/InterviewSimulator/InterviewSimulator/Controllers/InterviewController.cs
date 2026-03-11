@@ -119,13 +119,29 @@ namespace InterviewSimulator.Controllers
         public async Task<IActionResult> CompleteSession(int sessionId, [FromBody] CompleteSessionRequest request)
         {
              var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
-             var session = await _context.InterviewSessions.FirstOrDefaultAsync(s => s.Id == sessionId && s.UserId == userId);
+             var session = await _context.InterviewSessions
+                 .Include(s => s.SessionDetails)
+                 .FirstOrDefaultAsync(s => s.Id == sessionId && s.UserId == userId);
 
              if (session == null) return NotFound();
 
              session.Status = 1; // Completed
              session.EndedAt = DateTime.UtcNow;
              session.OverallFeedback = request.OverallFeedback;
+             session.TotalScore = request.TotalScore;
+             
+             if (request.Details != null)
+             {
+                 foreach(var detail in request.Details)
+                 {
+                     var existingDetail = session.SessionDetails.FirstOrDefault(d => d.OrderIndex == detail.QuestionIndex);
+                     if (existingDetail != null)
+                     {
+                         existingDetail.Score = detail.Score;
+                         existingDetail.AiFeedback = detail.AiFeedback;
+                     }
+                 }
+             }
              
              await _context.SaveChangesAsync();
              return Ok();
@@ -172,6 +188,7 @@ namespace InterviewSimulator.Controllers
                 session.Id,
                 session.StartedAt,
                 session.EndedAt,
+                session.TotalScore,
                 session.CvAnalysisJson, // The stored analysis
                 session.OverallFeedback,
                 Questions = session.SessionDetails.OrderBy(d => d.OrderIndex).Select(d => new 
@@ -202,6 +219,15 @@ namespace InterviewSimulator.Controllers
 
     public class CompleteSessionRequest
     {
+        public double TotalScore { get; set; }
         public string OverallFeedback { get; set; }
+        public List<DetailResult> Details { get; set; }
+    }
+
+    public class DetailResult 
+    {
+        public int QuestionIndex { get; set; }
+        public double Score { get; set; }
+        public string AiFeedback { get; set; }
     }
 }
