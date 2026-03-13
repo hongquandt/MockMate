@@ -58,7 +58,8 @@ namespace InterviewSimulator.Controllers
                     return BadRequest("Invalid Plan ID");
             }
 
-            long orderCode = long.Parse(DateTimeOffset.Now.ToString("yyMMddHHmmss"));
+            // Use a more unique orderCode (timestamp in ms, capped for safe int / long)
+            long orderCode = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
             var transaction = new PaymentTransaction
             {
@@ -66,7 +67,7 @@ namespace InterviewSimulator.Controllers
                 Amount = amount,
                 Status = 0, // Pending
                 TransactionCode = orderCode.ToString(),
-                TransactionDate = DateTime.Now
+                TransactionDate = DateTime.UtcNow
             };
             _context.PaymentTransactions.Add(transaction);
             await _context.SaveChangesAsync();
@@ -77,8 +78,15 @@ namespace InterviewSimulator.Controllers
                 var clientId = _configuration["PayOS:ClientId"];
                 var apiKey = _configuration["PayOS:ApiKey"];
                 var checksumKey = _configuration["PayOS:ChecksumKey"];
+                var payosUrl = _configuration["PayOS:PaymentUrl"] ?? "https://api-merchant.payos.vn/v2/payment-requests";
 
-                // Prepare data for signature
+                // Prepare data for items (Mandatory for PayOS)
+                var items = new List<object>
+                {
+                    new { name = description, quantity = 1, price = amount }
+                };
+
+                // Prepare data for signature (items is NOT included in payment request signature)
                 var dataForSignature = new SortedDictionary<string, object>
                 {
                     { "amount", amount },
@@ -99,11 +107,12 @@ namespace InterviewSimulator.Controllers
                     description = description,
                     cancelUrl = request.CallbackUrl + "?status=cancelled",
                     returnUrl = request.CallbackUrl + "?status=success",
+                    items = items,
                     signature = signature
                 };
 
                 // Call PayOS API
-                var payosRequest = new HttpRequestMessage(HttpMethod.Post, "https://api-merchant.payos.vn/v2/payment-requests");
+                var payosRequest = new HttpRequestMessage(HttpMethod.Post, payosUrl);
                 payosRequest.Headers.Add("x-client-id", clientId);
                 payosRequest.Headers.Add("x-api-key", apiKey);
                 payosRequest.Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
@@ -116,7 +125,11 @@ namespace InterviewSimulator.Controllers
                     // Rollback transaction
                     _context.PaymentTransactions.Remove(transaction);
                     await _context.SaveChangesAsync();
-                    return StatusCode((int)response.StatusCode, new { message = "PayOS API error", error = responseContent });
+                    return StatusCode((int)response.StatusCode, new { 
+                        message = "PayOS API error", 
+                        error = responseContent, 
+                        sentPayload = payload 
+                    });
                 }
 
                 var payosResponse = JsonSerializer.Deserialize<JsonElement>(responseContent);
@@ -131,9 +144,16 @@ namespace InterviewSimulator.Controllers
             catch (Exception ex)
             {
                 // Rollback transaction if payment link creation fails
-                _context.PaymentTransactions.Remove(transaction);
-                await _context.SaveChangesAsync();
-                return StatusCode(500, new { message = "Failed to create payment link", error = ex.Message });
+                try {
+                    _context.PaymentTransactions.Remove(transaction);
+                    await _context.SaveChangesAsync();
+                } catch { /* Ignore rollback failure if main error is already being reported */ }
+                
+                return StatusCode(500, new { 
+                    message = "Failed to create payment link", 
+                    error = ex.Message,
+                    details = ex.ToString() // Return full details for debugging
+                });
             }
         }
 

@@ -62,7 +62,15 @@ const VipUpgradePage = () => {
             }
         } catch (error) {
             console.error(error);
-            alert("Có lỗi khi tạo thanh toán: " + (error.response?.data || error.message));
+            let errorMsg = error.message;
+            if (error.response?.data) {
+                if (typeof error.response.data === 'string') {
+                    errorMsg = error.response.data;
+                } else if (error.response.data.message) {
+                    errorMsg = `${error.response.data.message}: ${error.response.data.error || ''}`;
+                }
+            }
+            alert("Có lỗi khi tạo thanh toán: " + errorMsg);
         } finally {
             setLoading(false);
         }
