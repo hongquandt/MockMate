@@ -119,7 +119,7 @@ const HomePage = () => {
                     </p>
                   </div>
                   <div className="flex flex-col sm:flex-row gap-4">
-                    <Link to="/register" className="flex min-w-[180px] cursor-pointer items-center justify-center rounded-xl h-14 px-6 bg-primary text-white text-lg font-bold shadow-lg shadow-primary/20 hover:scale-[1.02] hover:bg-primary-dark transition-all">
+                    <Link to={user ? "/dashboard" : "/register"} className="flex min-w-[180px] cursor-pointer items-center justify-center rounded-xl h-14 px-6 bg-primary text-white text-lg font-bold shadow-lg shadow-primary/20 hover:scale-[1.02] hover:bg-primary-dark transition-all">
                       <span>Get Started Free</span>
                     </Link>
                     <button className="flex min-w-[180px] cursor-pointer items-center justify-center rounded-xl h-14 px-6 border-2 border-[#e7edf3] dark:border-slate-700 text-[#0d141b] dark:text-white text-lg font-bold hover:bg-[#e7edf3] dark:hover:bg-slate-700 transition-colors">
@@ -247,7 +247,7 @@ const HomePage = () => {
                   Join thousands of successful candidates who used MockMate to ace their interviews.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4">
-                  <Link to="/register" className="flex min-w-[200px] cursor-pointer items-center justify-center rounded-xl h-14 px-8 bg-white text-primary text-lg font-black shadow-lg hover:scale-105 transition-transform">
+                  <Link to={user ? "/dashboard" : "/register"} className="flex min-w-[200px] cursor-pointer items-center justify-center rounded-xl h-14 px-8 bg-white text-primary text-lg font-black shadow-lg hover:scale-105 transition-transform">
                     Get Started Free
                   </Link>
                   <button className="flex min-w-[200px] cursor-pointer items-center justify-center rounded-xl h-14 px-8 border-2 border-white/30 bg-white/10 text-white text-lg font-bold hover:bg-white/20 transition-colors">
