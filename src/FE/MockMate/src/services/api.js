@@ -110,6 +110,14 @@ export const authService = {
           localStorage.setItem('user', JSON.stringify(response.data.user));
       }
       return response.data;
+  },
+  
+  changePassword: async (oldPassword, newPassword) => {
+      const response = await api.post('/auth/change-password', {
+          oldPassword,
+          newPassword
+      });
+      return response.data;
   }
 };
 
@@ -140,6 +148,58 @@ export const interviewService = {
   },
   getSessionDetails: async (id) => {
     return (await api.get(`/interview/${id}`)).data;
+  }
+};
+
+export const adminService = {
+  getDashboardStats: async () => {
+    return (await api.get('/admin/dashboard')).data;
+  },
+  
+  // -- USER Management --
+  getAllUsers: async (role) => {
+    const params = role ? { role } : {};
+    return (await api.get('/admin/users', { params })).data;
+  },
+  toggleUserStatus: async (userId) => {
+    return (await api.post(`/admin/users/${userId}/toggle`)).data;
+  },
+  createUser: async (data) => {
+    return (await api.post('/admin/users', data)).data;
+  },
+  updateUser: async (id, data) => {
+    return (await api.put(`/admin/users/${id}`, data)).data;
+  },
+  deleteUser: async (id) => {
+    return (await api.delete(`/admin/users/${id}`)).data;
+  },
+
+  // -- JOB Management --
+  getAllJobs: async () => {
+    return (await api.get('/admin/jobs')).data;
+  },
+  toggleJobStatus: async (jobId) => {
+    return (await api.post(`/admin/jobs/${jobId}/toggle`)).data;
+  },
+  createJob: async (data) => {
+    return (await api.post('/admin/jobs', data)).data;
+  },
+  updateJob: async (id, data) => {
+    return (await api.put(`/admin/jobs/${id}`, data)).data;
+  },
+  deleteJob: async (id) => {
+    return (await api.delete(`/admin/jobs/${id}`)).data;
+  },
+  getJobCategories: async () => {
+    return (await api.get('/admin/jobs/categories')).data;
+  },
+
+  // -- REVENUE --
+  getRevenueStats: async () => {
+    return (await api.get('/admin/revenue/stats')).data;
+  },
+  getRecentTransactions: async (count = 10) => {
+    return (await api.get(`/admin/revenue/transactions?count=${count}`)).data;
   }
 };
 
