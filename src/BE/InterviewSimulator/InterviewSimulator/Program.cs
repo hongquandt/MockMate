@@ -42,6 +42,7 @@ namespace InterviewSimulator
             // Services Injection
             builder.Services.AddScoped<InterviewSimulator.Services.Interfaces.IAuthService, InterviewSimulator.Services.Implementations.AuthService>();
             builder.Services.AddScoped<InterviewSimulator.Services.Interfaces.IEmailService, InterviewSimulator.Services.Implementations.EmailService>();
+            builder.Services.AddScoped<InterviewSimulator.Services.Interfaces.IAdminService, InterviewSimulator.Services.Implementations.AdminService>();
             builder.Services.AddMemoryCache();
 
             // HttpClient for PayOS API
@@ -114,6 +115,34 @@ namespace InterviewSimulator
                         // EF Core will assign IDs 1 and 2 by default for a fresh table
                         context.Roles.AddRange(adminRole, userRole);
                         context.SaveChanges();
+                    }
+
+                    // Seed Admin User
+                    if (!context.Users.Any(u => u.Email == "admin@mockmate.com"))
+                    {
+                        var adminRole = context.Roles.FirstOrDefault(r => r.RoleName == "Admin");
+                        if (adminRole != null)
+                        {
+                            string hash;
+                            using (var sha256 = System.Security.Cryptography.SHA256.Create())
+                            {
+                                var hashedBytes = sha256.ComputeHash(System.Text.Encoding.UTF8.GetBytes("Admin@123"));
+                                hash = Convert.ToBase64String(hashedBytes);
+                            }
+
+                            var adminUser = new InterviewSimulator.Models.User
+                            {
+                                FullName = "System Admin",
+                                Email = "admin@mockmate.com",
+                                PasswordHash = hash,
+                                RoleId = adminRole.Id,
+                                CreatedAt = DateTime.UtcNow,
+                                IsDeleted = false,
+                                IsVip = true
+                            };
+                            context.Users.Add(adminUser);
+                            context.SaveChanges();
+                        }
                     }
                 }
                 catch (Exception ex)

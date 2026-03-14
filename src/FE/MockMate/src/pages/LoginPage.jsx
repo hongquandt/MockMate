@@ -58,8 +58,12 @@ const LoginPage = () => {
 
         setLoading(true);
         try {
-            await authService.login(formData.email, formData.password, captchaToken);
-            navigate('/'); // Redirect to home
+            const res = await authService.login(formData.email, formData.password, captchaToken);
+            if (res.user && res.user.roleId === 1) {
+                navigate('/admin/dashboard');
+            } else {
+                navigate('/');
+            }
         } catch (err) {
             setError(err.response?.data?.message || 'Login failed. Please check your credentials.');
         } finally {

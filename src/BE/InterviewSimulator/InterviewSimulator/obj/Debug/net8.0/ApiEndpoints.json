@@ -1,5 +1,231 @@
 [
   {
+    "ContainingType": "InterviewSimulator.Controllers.AdminController",
+    "Method": "GetDashboardStats",
+    "RelativePath": "api/Admin/dashboard",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "InterviewSimulator.Controllers.AdminController",
+    "Method": "GetAllJobs",
+    "RelativePath": "api/Admin/jobs",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "InterviewSimulator.Controllers.AdminController",
+    "Method": "CreateJob",
+    "RelativePath": "api/Admin/jobs",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "InterviewSimulator.DTOs.JobCreateDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "InterviewSimulator.Controllers.AdminController",
+    "Method": "UpdateJob",
+    "RelativePath": "api/Admin/jobs/{jobId}",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "jobId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "request",
+        "Type": "InterviewSimulator.DTOs.JobUpdateDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "InterviewSimulator.Controllers.AdminController",
+    "Method": "DeleteJob",
+    "RelativePath": "api/Admin/jobs/{jobId}",
+    "HttpMethod": "DELETE",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "jobId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "InterviewSimulator.Controllers.AdminController",
+    "Method": "ToggleJobStatus",
+    "RelativePath": "api/Admin/jobs/{jobId}/toggle",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "jobId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "InterviewSimulator.Controllers.AdminController",
+    "Method": "GetJobCategories",
+    "RelativePath": "api/Admin/jobs/categories",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "InterviewSimulator.Controllers.AdminController",
+    "Method": "GetRevenueStats",
+    "RelativePath": "api/Admin/revenue/stats",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "InterviewSimulator.Controllers.AdminController",
+    "Method": "GetRecentTransactions",
+    "RelativePath": "api/Admin/revenue/transactions",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "count",
+        "Type": "System.Int32",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "InterviewSimulator.Controllers.AdminController",
+    "Method": "GetAllUsers",
+    "RelativePath": "api/Admin/users",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "role",
+        "Type": "System.String",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "InterviewSimulator.Controllers.AdminController",
+    "Method": "CreateUser",
+    "RelativePath": "api/Admin/users",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "InterviewSimulator.DTOs.UserCreateDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "InterviewSimulator.Controllers.AdminController",
+    "Method": "UpdateUser",
+    "RelativePath": "api/Admin/users/{userId}",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "userId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "request",
+        "Type": "InterviewSimulator.DTOs.UserUpdateDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "InterviewSimulator.Controllers.AdminController",
+    "Method": "DeleteUser",
+    "RelativePath": "api/Admin/users/{userId}",
+    "HttpMethod": "DELETE",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "userId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "InterviewSimulator.Controllers.AdminController",
+    "Method": "ToggleUserStatus",
+    "RelativePath": "api/Admin/users/{userId}/toggle",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "userId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "InterviewSimulator.Controllers.AuthController",
+    "Method": "ChangePassword",
+    "RelativePath": "api/Auth/change-password",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "InterviewSimulator.Controllers.ChangePasswordRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
     "ContainingType": "InterviewSimulator.Controllers.AuthController",
     "Method": "ForgotPassword",
     "RelativePath": "api/Auth/forgot-password",
