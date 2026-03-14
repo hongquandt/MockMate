@@ -1,356 +1,393 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { authService } from '../services/api';
+import { authService, interviewService } from '../services/api';
+import { uploadService } from '../services/uploadService';
+import logoImg from '../assets/img/z7430605225117_544001c3f21b8fc1cb5af11cb46703c0.jpg';
 
 const UserProfilePage = () => {
-  const [activeTab, setActiveTab] = useState('overview');
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
-  const navigate = useNavigate();
-  const location = useLocation();
+    const [activeTab, setActiveTab] = useState('overview');
+    const [user, setUser] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+    const navigate = useNavigate();
+    const location = useLocation();
 
-  useEffect(() => {
-    loadUserProfile();
-    
-    // Check if returning from payment
-    const params = new URLSearchParams(location.search);
-    const status = params.get('status');
-    if (status === 'success') {
-      setShowSuccessMessage(true);
-      // Reload profile multiple times to catch webhook update
-      // PayOS webhook might take a few seconds to process
-      setTimeout(() => loadUserProfile(), 2000);
-      setTimeout(() => loadUserProfile(), 5000);
-      setTimeout(() => loadUserProfile(), 10000);
-      
-      // Hide success message after 15 seconds
-      setTimeout(() => setShowSuccessMessage(false), 15000);
-      
-      // Clean URL
-      window.history.replaceState({}, '', '/profile');
+    const [uploading, setUploading] = useState(false);
+    const [editMode, setEditMode] = useState(false);
+    const [formData, setFormData] = useState({
+        fullName: '',
+        phoneNumber: '',
+        avatarUrl: ''
+    });
+
+    useEffect(() => {
+        loadUserProfile();
+
+        // Check if returning from payment
+        const params = new URLSearchParams(location.search);
+        const status = params.get('status');
+        if (status === 'success') {
+            setShowSuccessMessage(true);
+            setTimeout(() => loadUserProfile(), 2000);
+            setTimeout(() => setShowSuccessMessage(false), 10000);
+            window.history.replaceState({}, '', '/profile');
+        }
+    }, [location]);
+
+
+
+    const loadUserProfile = async () => {
+        try {
+            setLoading(true);
+            const profileData = await authService.getUserProfile();
+            setUser(profileData);
+            setFormData({
+                fullName: profileData.fullName || '',
+                phoneNumber: profileData.phoneNumber || '',
+                avatarUrl: profileData.avatarUrl || ''
+            });
+        } catch (error) {
+            console.error('Failed to load profile:', error);
+            if (error.response?.status === 401) {
+                navigate('/login');
+            }
+        } finally {
+            setLoading(false);
+        }
+    };
+
+
+
+    const handleImageUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        setUploading(true);
+        try {
+            const data = await uploadService.uploadFile(file);
+            setFormData(prev => ({ ...prev, avatarUrl: data.secure_url }));
+        } catch (error) {
+            console.error("Upload failed", error);
+            alert("Upload failed. Please try again.");
+        } finally {
+            setUploading(false);
+        }
+    };
+
+    const handleUpdateProfile = async (e) => {
+        e.preventDefault();
+        try {
+            await authService.updateProfile(formData);
+            alert("Profile updated successfully!");
+            setEditMode(false);
+            loadUserProfile(); // Reload to refresh data
+        } catch (error) {
+            alert("Failed to update profile: " + error.message);
+        }
+    };
+
+    const handleLogout = () => {
+        authService.logout();
+    };
+
+    if (loading) {
+        return (
+            <div className="flex h-screen items-center justify-center bg-slate-900 text-white">
+                <div className="text-center">
+                    <div className="inline-block h-12 w-12 animate-spin rounded-full border-4 border-solid border-purple-500 border-r-transparent"></div>
+                    <p className="mt-4 text-slate-400">Loading profile...</p>
+                </div>
+            </div>
+        );
     }
-  }, [location]);
 
-  const loadUserProfile = async () => {
-    try {
-      setLoading(true);
-      const profileData = await authService.getUserProfile();
-      setUser(profileData);
-    } catch (error) {
-      console.error('Failed to load profile:', error);
-      // If unauthorized, redirect to login
-      if (error.response?.status === 401) {
-        navigate('/login');
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
+    if (!user) return null;
 
-  const handleLogout = () => {
-    authService.logout();
-  };
+    const isVipActive = user.isVip && user.vipExpirationDate && new Date(user.vipExpirationDate) > new Date();
 
-  if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-background-light dark:bg-black">
-        <div className="text-center">
-          <div className="inline-block h-12 w-12 animate-spin rounded-full border-4 border-solid border-primary border-r-transparent"></div>
-          <p className="mt-4 text-slate-600 dark:text-slate-400">Loading profile...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-background-light dark:bg-black">
-        <div className="text-center">
-          <p className="text-slate-600 dark:text-slate-400">Failed to load profile</p>
-          <button onClick={() => navigate('/login')} className="mt-4 px-6 py-2 bg-primary text-white rounded-xl">
-            Go to Login
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  // Dummy data for stats and activity (will be replaced with real data later)
-  const stats = {
-    interviewsCompleted: 24,
-    avgScore: 8.5,
-    streak: 5,
-    hoursPracticed: 12
-  };
-
-  const recentActivity = [
-    { id: 1, title: "Mock Interview: Senior Frontend", date: "2 hours ago", score: 8.5, status: "Completed" },
-    { id: 2, title: "CV Analysis: Tech Lead", date: "1 day ago", score: 9.0, status: "Analyzed" },
-    { id: 3, title: "Mock Interview: Behavioral", date: "3 days ago", score: 7.8, status: "Completed" },
-  ];
-
-  const isVipActive = user.isVip && user.vipExpirationDate && new Date(user.vipExpirationDate) > new Date();
-
-  return (
-    <div className="flex h-screen bg-background-light dark:bg-black overflow-hidden font-display">
-      {/* Sidebar - Desktop */}
-      <aside className="w-64 bg-white dark:bg-background-dark border-r border-slate-200 dark:border-slate-800 hidden md:flex flex-col">
-        <div className="p-6 flex items-center gap-3">
-          <div className="h-8 w-8 bg-primary rounded-lg flex items-center justify-center text-white font-bold">M</div>
-          <span className="text-lg font-bold text-slate-900 dark:text-white">MockMate</span>
-        </div>
-        
-        <nav className="flex-1 px-4 space-y-2 mt-4">
-          <NavItem icon="dashboard" label="Dashboard" to="/" />
-          <NavItem icon="person" label="Profile" to="/profile" active />
-          <NavItem icon="description" label="CV Analysis" to="/cv-analysis" />
-          <NavItem icon="videocam" label="Interviews" to="/interviews" />
-          <NavItem icon="trending_up" label="Progress" to="/progress" />
-          <NavItem icon="settings" label="Settings" to="/settings" />
-        </nav>
-
-        <div className="p-4 border-t border-slate-100 dark:border-slate-800">
-          <button onClick={handleLogout} className="flex items-center gap-3 w-full p-3 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/10 text-red-500 transition-colors">
-            <span className="material-symbols-outlined">logout</span>
-            <span className="font-medium">Sign Out</span>
-          </button>
-        </div>
-      </aside>
-
-      {/* Main Content */}
-      <main className="flex-1 overflow-y-auto">
-        {/* Mobile Header */}
-        <div className="md:hidden flex items-center justify-between p-4 bg-white dark:bg-background-dark border-b border-slate-200 dark:border-slate-800 sticky top-0 z-20">
-          <span className="font-bold text-lg dark:text-white">Profile</span>
-          <button className="text-slate-500"><span className="material-symbols-outlined">menu</span></button>
-        </div>
-
-        {/* Success Message Banner */}
-        {showSuccessMessage && (
-          <div className="sticky top-0 z-30 bg-gradient-to-r from-green-500 to-emerald-600 text-white px-6 py-4 shadow-lg">
-            <div className="max-w-5xl mx-auto flex items-center gap-3">
-              <span className="material-symbols-outlined text-2xl animate-bounce">check_circle</span>
-              <div>
-                <p className="font-bold">Payment Successful!</p>
-                <p className="text-sm text-green-100">Your VIP status is being updated. Please wait a moment...</p>
-              </div>
-              <button 
-                onClick={() => {
-                  setShowSuccessMessage(false);
-                  loadUserProfile();
-                }}
-                className="ml-auto px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg font-bold text-sm transition-colors"
-              >
-                Refresh Now
-              </button>
-            </div>
-          </div>
-        )}
-
-        <div className="max-w-5xl mx-auto p-4 md:p-8 pb-20">
-          
-          {/* Profile Header */}
-          <div className="relative mb-20 md:mb-24">
-            <div className="h-48 md:h-64 w-full rounded-2xl md:rounded-3xl overflow-hidden shadow-sm bg-gradient-to-r from-primary to-purple-600">
-              <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
-            </div>
-            
-            <div className="absolute -bottom-16 left-6 md:left-10 flex flex-col md:flex-row items-end md:items-center gap-4 md:gap-6">
-              <div className="relative h-32 w-32 md:h-40 md:w-40 rounded-full border-4 border-white dark:border-background-dark shadow-xl overflow-hidden bg-gradient-to-br from-primary to-purple-600">
-                <div className="w-full h-full flex items-center justify-center text-white text-5xl md:text-6xl font-black">
-                  {user.fullName?.charAt(0).toUpperCase() || 'U'}
+        <div className="flex h-screen bg-slate-50 text-slate-900 overflow-hidden font-sans">
+            {/* Sidebar */}
+            <aside className="w-64 bg-white border-r border-slate-200 hidden md:flex flex-col">
+                <div className="p-6 flex items-center gap-3 border-b border-slate-100">
+                    <img src={logoImg} alt="Logo" className="h-8 w-8 rounded-lg" />
+                    <span className="text-lg font-bold text-slate-800">MockMate</span>
                 </div>
-                {isVipActive && (
-                  <div className="absolute bottom-0 right-0 bg-gradient-to-r from-amber-500 to-orange-600 text-white px-3 py-1 rounded-tl-xl rounded-br-xl shadow-lg flex items-center gap-1">
-                    <span className="material-symbols-outlined text-sm">workspace_premium</span>
-                    <span className="font-bold text-xs">VIP</span>
-                  </div>
-                )}
-              </div>
-              <div className="mb-2 md:mb-4">
-                <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white drop-shadow-sm md:drop-shadow-none md:text-black">
-                  {user.fullName || 'User'}
-                </h1>
-                <p className="text-slate-200 md:text-slate-500 font-medium">{user.email}</p>
-                {isVipActive && (
-                  <p className="text-xs text-amber-600 dark:text-amber-400 font-bold mt-1">
-                    VIP until {new Date(user.vipExpirationDate).toLocaleDateString()}
-                  </p>
-                )}
-              </div>
-              <div className="flex-1"></div>
-              <button className="mb-4 hidden md:flex items-center gap-2 px-5 py-2.5 bg-primary hover:bg-primary-dark text-white rounded-xl font-bold transition-all shadow-lg hover:shadow-primary/30">
-                <span className="material-symbols-outlined text-sm">edit</span>
-                Edit Profile
-              </button>
-            </div>
-          </div>
+                
+                <nav className="flex-1 px-4 space-y-2 mt-6">
+                    <NavItem 
+                        icon="dashboard" 
+                        label="Dashboard" 
+                        onClick={() => navigate('/dashboard')} 
+                    />
+                    <NavItem 
+                        icon="person" 
+                        label="Thông tin cá nhân" 
+                        active={activeTab === 'overview' || activeTab === 'edit'} 
+                        onClick={() => setActiveTab('overview')} 
+                    />
 
-          <div className="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Left Column - Info & Skills */}
-            <div className="space-y-6">
-              
-              {/* Personal Info Card */}
-              <div className="bg-white dark:bg-background-dark p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
-                <h3 className="font-bold text-lg mb-4 text-slate-900 dark:text-white">Personal Info</h3>
-                <div className="space-y-4">
-                  <InfoItem icon="mail" label="Email" value={user.email} />
-                  <InfoItem icon="person" label="User ID" value={`#${user.userId}`} />
-                  {isVipActive && (
-                    <InfoItem icon="workspace_premium" label="VIP Status" value="Active" />
-                  )}
+                    <NavItem 
+                        icon="workspace_premium" 
+                        label="Nâng cấp VIP" 
+                        active={false}
+                        onClick={() => navigate('/vip-upgrade')}
+                        isSpecial
+                    />
+                </nav>
+
+                <div className="p-4 border-t border-slate-100">
+                    <button onClick={handleLogout} className="flex items-center gap-3 w-full p-3 rounded-xl hover:bg-red-50 text-red-500 transition-colors">
+                        <span className="material-symbols-outlined">logout</span>
+                        <span className="font-medium">Đăng xuất</span>
+                    </button>
                 </div>
-              </div>
+            </aside>
 
-              {/* Upgrade VIP Card - Only show if not VIP */}
-              {!isVipActive && (
-                <div className="bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl p-6 text-white shadow-lg shadow-amber-500/20 relative overflow-hidden">
-                  <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-white/10 rounded-full blur-2xl"></div>
-                  
-                  <div className="flex items-center gap-3 mb-4">
-                    <span className="material-symbols-outlined text-3xl bg-white/20 p-2 rounded-lg">workspace_premium</span>
-                    <div>
-                      <h3 className="font-bold text-lg leading-tight">MockMate VIP</h3>
-                      <p className="text-amber-100 text-xs">Mở khóa toàn bộ tính năng</p>
+            {/* Main Content */}
+            <main className="flex-1 overflow-y-auto relative">
+                {/* Mobile Header */}
+                <div className="md:hidden flex items-center justify-between p-4 bg-white border-b border-slate-200 sticky top-0 z-20">
+                    <span className="font-bold text-lg">Profile</span>
+                    <button className="text-slate-500"><span className="material-symbols-outlined">menu</span></button>
+                </div>
+
+                {showSuccessMessage && (
+                    <div className="bg-green-600 text-white px-6 py-3 shadow-lg flex justify-between items-center">
+                         <span>Thanh toán thành công! Tài khoản VIP của bạn đang được cập nhật.</span>
+                         <button onClick={() => setShowSuccessMessage(false)}><span className="material-symbols-outlined">close</span></button>
                     </div>
-                  </div>
+                )}
 
-                  <ul className="space-y-2 mb-6 text-sm text-amber-50">
-                    <li className="flex items-center gap-2"><span className="material-symbols-outlined text-sm">check</span> Phỏng vấn không giới hạn</li>
-                    <li className="flex items-center gap-2"><span className="material-symbols-outlined text-sm">check</span> AI phân tích chi tiết</li>
-                  </ul>
-
-                  <Link to="/vip-upgrade" className="block w-full py-2.5 bg-white text-amber-600 font-bold text-center rounded-xl hover:bg-amber-50 transition-colors shadow-sm">
-                    Nâng cấp ngay
-                  </Link>
-                </div>
-              )}
-
-              {/* VIP Benefits Card - Show if VIP */}
-              {isVipActive && (
-                <div className="bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl p-6 text-white shadow-lg shadow-amber-500/20">
-                  <div className="flex items-center gap-3 mb-4">
-                    <span className="material-symbols-outlined text-3xl">workspace_premium</span>
-                    <div>
-                      <h3 className="font-bold text-lg">VIP Active</h3>
-                      <p className="text-amber-100 text-xs">Expires: {new Date(user.vipExpirationDate).toLocaleDateString()}</p>
-                    </div>
-                  </div>
-                  <Link to="/vip-upgrade" className="block w-full py-2.5 bg-white/20 hover:bg-white/30 text-white font-bold text-center rounded-xl transition-colors">
-                    Extend VIP
-                  </Link>
-                </div>
-              )}
-            </div>
-
-            {/* Right Column - Stats & Activity */}
-            <div className="lg:col-span-2 space-y-6">
-              
-              {/* Stats Grid */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <StatCard icon="videocam" label="Interviews" value={stats.interviewsCompleted} color="text-blue-500" bg="bg-blue-500/10" />
-                <StatCard icon="bolt" label="Avg Score" value={stats.avgScore} color="text-yellow-500" bg="bg-yellow-500/10" />
-                <StatCard icon="local_fire_department" label="Streak" value={stats.streak + " Days"} color="text-orange-500" bg="bg-orange-500/10" />
-                <StatCard icon="schedule" label="Practiced" value={stats.hoursPracticed + "h"} color="text-green-500" bg="bg-green-500/10" />
-              </div>
-
-              {/* Tabs */}
-              <div className="bg-white dark:bg-background-dark p-1 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm inline-flex">
-                <TabButton label="Overview" active={activeTab === 'overview'} onClick={() => setActiveTab('overview')} />
-                <TabButton label="History" active={activeTab === 'history'} onClick={() => setActiveTab('history')} />
-                <TabButton label="Saved Questions" active={activeTab === 'saved'} onClick={() => setActiveTab('saved')} />
-              </div>
-
-              {/* Content Area */}
-              <div className="bg-white dark:bg-background-dark p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm min-h-[300px]">
-                {activeTab === 'overview' && (
-                  <div className="space-y-6">
-                    <div>
-                      <h3 className="font-bold text-lg mb-4 text-slate-900 dark:text-white">Recent Activity</h3>
-                      <div className="space-y-4">
-                        {recentActivity.map((item) => (
-                          <div key={item.id} className="flex items-center justify-between p-4 rounded-xl border border-slate-100 dark:border-slate-700/50 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group cursor-pointer">
-                            <div className="flex items-center gap-4">
-                              <div className={`h-10 w-10 rounded-full flex items-center justify-center ${getStatusColor(item.status)}`}>
-                                <span className="material-symbols-outlined text-xl">{item.title.includes("CV") ? "description" : "videocam"}</span>
-                              </div>
-                              <div>
-                                <h4 className="font-bold text-slate-800 dark:text-slate-200 group-hover:text-primary transition-colors">{item.title}</h4>
-                                <p className="text-xs text-slate-400">{item.date}</p>
-                              </div>
+                <div className="max-w-4xl mx-auto p-6 md:p-10">
+                    
+                    {/* Header Banner */}
+                    <div className="relative mb-12">
+                        <div className="h-48 rounded-3xl overflow-hidden bg-gradient-to-r from-purple-600 to-indigo-600 shadow-lg relative">
+                            {/* Abstract Pattern */}
+                            <div className="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
+                        </div>
+                        
+                        <div className="absolute -bottom-10 left-8 md:left-12 flex items-end gap-6">
+                            <div className="relative">
+                                <div className="h-32 w-32 rounded-full border-4 border-white overflow-hidden bg-slate-100 shadow-xl">
+                                    {user.avatarUrl ? (
+                                        <img src={user.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                                    ) : (
+                                        <div className="w-full h-full flex items-center justify-center text-4xl font-bold text-slate-400 bg-slate-100">
+                                            {user.fullName?.charAt(0).toUpperCase()}
+                                        </div>
+                                    )}
+                                </div>
+                                <button 
+                                    onClick={() => { setActiveTab('edit'); setEditMode(true); }}
+                                    className="absolute bottom-0 right-0 bg-purple-600 p-2 rounded-full shadow-lg hover:scale-105 transition-transform text-white border-4 border-white"
+                                >
+                                    <span className="material-symbols-outlined text-sm">edit</span>
+                                </button>
                             </div>
-                            <div className="text-right">
-                              <span className="block font-black text-lg text-slate-900 dark:text-white">{item.score}/10</span>
-                              <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">{item.status}</span>
+                            
+                            <div className="mb-2">
+                                <h1 className="text-3xl font-bold text-slate-900">{user.fullName}</h1>
+                                <p className="text-slate-500 font-medium flex items-center gap-2">
+                                    {user.email}
+                                    {isVipActive && (
+                                        <span className="px-2 py-0.5 bg-amber-100 text-amber-600 text-xs font-bold rounded uppercase border border-amber-200">VIP</span>
+                                    )}
+                                </p>
                             </div>
-                          </div>
-                        ))}
-                      </div>
+                        </div>
                     </div>
-                  </div>
-                )}
-                {activeTab === 'history' && <p className="text-slate-500 text-center py-10">History content goes here...</p>}
-                {activeTab === 'saved' && <p className="text-slate-500 text-center py-10">Saved questions go here...</p>}
-              </div>
 
-            </div>
-          </div>
+                    {/* Content Area Based on Tab */}
+                    <div className="mt-16">
+                        {activeTab === 'overview' && (
+                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                                {/* Left: Personal Info */}
+                                <div className="lg:col-span-2 space-y-6">
+                                    <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
+                                        <div className="flex justify-between items-center mb-6">
+                                            <h3 className="font-bold text-lg flex items-center gap-2 text-slate-800">
+                                                <span className="material-symbols-outlined text-purple-600">person</span>
+                                                Thông tin cá nhân
+                                            </h3>
+                                            <button 
+                                                onClick={() => { setActiveTab('edit'); setEditMode(true); }}
+                                                className="text-sm text-purple-600 hover:text-purple-700 font-medium"
+                                            >
+                                                Chỉnh sửa
+                                            </button>
+                                        </div>
+                                        
+                                        <div className="space-y-4">
+                                            <InfoRow label="Họ và tên" value={user.fullName} />
+                                            <InfoRow label="Email" value={user.email} />
+                                            <InfoRow label="Số điện thoại" value={user.phoneNumber || 'Chưa cập nhật'} />
+                                            <InfoRow label="Trạng thái VIP" value={isVipActive ? `Hết hạn: ${new Date(user.vipExpirationDate).toLocaleDateString()}` : 'Chưa kích hoạt'} 
+                                                isVip={isVipActive} 
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Right: Quick Stats/Actions */}
+                                <div className="space-y-6">
+                                    {!isVipActive && (
+                                        <div className="bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden group">
+                                            <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-white/10 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-700"></div>
+                                            <h3 className="font-bold text-lg mb-2">Nâng cấp VIP</h3>
+                                            <p className="text-amber-100 text-sm mb-4">Mở khóa phỏng vấn không giới hạn và AI phân tích chuyên sâu.</p>
+                                            <button 
+                                                onClick={() => navigate('/vip-upgrade')}
+                                                className="w-full py-2 bg-white text-orange-600 font-bold rounded-lg shadow hover:bg-amber-50 transition-colors"
+                                            >
+                                                Xem gói dịch vụ
+                                            </button>
+                                        </div>
+                                    )}
+                                    
+                                    <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
+                                        <h3 className="font-bold mb-4 text-slate-800">Hoạt động gần đây</h3>
+                                        <button 
+                                            onClick={() => navigate('/cv-history')}
+                                            className="w-full flex items-center justify-between p-3 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors text-slate-700 text-sm font-medium"
+                                        >
+                                            <span className="flex items-center gap-2">
+                                                <span className="material-symbols-outlined text-purple-600">history_edu</span>
+                                                Xem Lịch sử CV & Phỏng vấn
+                                            </span>
+                                            <span className="material-symbols-outlined text-slate-400">arrow_forward</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {activeTab === 'edit' && (
+                            <div className="max-w-2xl mx-auto">
+                                <div className="flex items-center gap-4 mb-6">
+                                    <button onClick={() => setActiveTab('overview')} className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-600">
+                                        <span className="material-symbols-outlined">arrow_back</span>
+                                    </button>
+                                    <h3 className="font-bold text-xl text-slate-800">Chỉnh sửa hồ sơ</h3>
+                                </div>
+                                
+                                <form onSubmit={handleUpdateProfile} className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm space-y-6">
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium text-slate-700">Họ và tên</label>
+                                        <div className="relative">
+                                            <span className="absolute left-3 top-3 text-slate-400 material-symbols-outlined text-[20px]">person</span>
+                                            <input 
+                                                type="text" 
+                                                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 pl-10 pr-4 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-colors text-slate-900"
+                                                value={formData.fullName}
+                                                onChange={(e) => setFormData({...formData, fullName: e.target.value})}
+                                                required
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium text-slate-700">Số điện thoại</label>
+                                        <div className="relative">
+                                            <span className="absolute left-3 top-3 text-slate-400 material-symbols-outlined text-[20px]">phone</span>
+                                            <input 
+                                                type="tel" 
+                                                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 pl-10 pr-4 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-colors text-slate-900"
+                                                value={formData.phoneNumber}
+                                                onChange={(e) => setFormData({...formData, phoneNumber: e.target.value})}
+                                                placeholder="0912345678"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium text-slate-700">Ảnh đại diện</label>
+                                        <div className="flex items-center gap-4">
+                                            <div className="relative w-20 h-20 rounded-full overflow-hidden border border-slate-200">
+                                                {uploading ? (
+                                                    <div className="absolute inset-0 flex items-center justify-center bg-slate-100">
+                                                        <span className="material-symbols-outlined animate-spin text-purple-600">progress_activity</span>
+                                                    </div>
+                                                ) : (
+                                                    <img 
+                                                        src={formData.avatarUrl || user.avatarUrl || 'https://via.placeholder.com/150'} 
+                                                        alt="Avatar Preview" 
+                                                        className="w-full h-full object-cover"
+                                                        onError={(e) => { e.target.onerror = null; e.target.src = 'https://via.placeholder.com/150'; }}
+                                                    />
+                                                )}
+                                            </div>
+                                            <div className="flex-1">
+                                                <input 
+                                                    type="file" 
+                                                    accept="image/*"
+                                                    onChange={handleImageUpload}
+                                                    className="block w-full text-sm text-slate-500
+                                                        file:mr-4 file:py-2 file:px-4
+                                                        file:rounded-full file:border-0
+                                                        file:text-sm file:font-semibold
+                                                        file:bg-purple-50 file:text-purple-700
+                                                        hover:file:bg-purple-100
+                                                    "
+                                                    disabled={uploading}
+                                                />
+                                                <p className="mt-1 text-xs text-slate-400">
+                                                    {formData.avatarUrl && formData.avatarUrl !== user.avatarUrl 
+                                                        ? <span className="text-green-600 font-bold">Ảnh đã tải lên. Nhấn "Lưu thay đổi" để áp dụng.</span>
+                                                        : "Hỗ trợ: JPG, PNG, GIF. Tối đa 5MB."}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="pt-4 flex gap-4">
+                                        <button 
+                                            type="submit" 
+                                            className="px-6 py-2.5 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl transition-all shadow-lg hover:shadow-purple-500/25"
+                                        >
+                                            Lưu thay đổi
+                                        </button>
+                                        <button 
+                                            type="button" 
+                                            onClick={() => setActiveTab('overview')}
+                                            className="px-6 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition-colors"
+                                        >
+                                            Hủy
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </main>
         </div>
-      </main>
-    </div>
-  );
+    );
 };
 
-// Sub-components for cleaner code
-const NavItem = ({ icon, label, to, active = false }) => (
-  <Link to={to} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-medium ${active ? 'bg-primary text-white shadow-lg shadow-primary/25' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}>
-    <span className="material-symbols-outlined">{icon}</span>
-    {label}
-  </Link>
+// Components
+const NavItem = ({ icon, label, active, onClick, isSpecial }) => (
+    <button 
+        onClick={onClick}
+        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-medium text-left mb-1
+        ${active 
+            ? 'bg-purple-100 text-purple-700' 
+            : isSpecial 
+                ? 'text-amber-600 hover:bg-amber-50' 
+                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+        }`}
+    >
+        <span className="material-symbols-outlined">{icon}</span>
+        {label}
+    </button>
 );
 
-const InfoItem = ({ icon, label, value, isLink }) => (
-  <div className="flex items-start gap-3">
-    <span className="material-symbols-outlined text-slate-400 text-xl">{icon}</span>
-    <div>
-      <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-0.5">{label}</p>
-      {isLink ? (
-        <a href="#" className="text-primary hover:underline font-medium">{value}</a>
-      ) : (
-        <p className="text-slate-700 dark:text-slate-200 font-medium">{value}</p>
-      )}
+const InfoRow = ({ label, value, isVip }) => (
+    <div className="flex justify-between py-3 border-b border-slate-100 last:border-0 hover:bg-slate-50 px-2 rounded transition-colors">
+        <span className="text-slate-500 font-medium">{label}</span>
+        <span className={`font-medium ${isVip ? 'text-amber-600 font-bold' : 'text-slate-900'}`}>{value}</span>
     </div>
-  </div>
 );
-
-const StatCard = ({ icon, label, value, color, bg }) => (
-  <div className="bg-white dark:bg-background-dark p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col items-center justify-center text-center gap-2 hover:translate-y-[-2px] transition-transform">
-    <div className={`h-10 w-10 ${bg} ${color} rounded-full flex items-center justify-center`}>
-      <span className="material-symbols-outlined">{icon}</span>
-    </div>
-    <div>
-      <p className="text-2xl font-black text-slate-900 dark:text-white">{value}</p>
-      <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">{label}</p>
-    </div>
-  </div>
-);
-
-const TabButton = ({ label, active, onClick }) => (
-  <button 
-    onClick={onClick}
-    className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${active ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
-  >
-    {label}
-  </button>
-);
-
-const getStatusColor = (status) => {
-  switch(status) {
-    case 'Completed': return 'bg-green-100 text-green-600 dark:bg-green-900/30';
-    case 'Analyzed': return 'bg-blue-100 text-blue-600 dark:bg-blue-900/30';
-    default: return 'bg-slate-100 text-slate-600';
-  }
-};
 
 export default UserProfilePage;

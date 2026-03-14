@@ -23,6 +23,8 @@ public partial class InterviewSession
 
     public string? OverallFeedback { get; set; }
 
+    public string? CvAnalysisJson { get; set; }
+
     public DateTime? StartedAt { get; set; }
 
     public DateTime? EndedAt { get; set; }

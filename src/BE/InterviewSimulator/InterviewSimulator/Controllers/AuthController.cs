@@ -121,7 +121,9 @@ namespace InterviewSimulator.Controllers
                     fullName = user.FullName,
                     email = user.Email,
                     isVip = user.IsVip,
-                    vipExpirationDate = user.VipExpirationDate
+                    vipExpirationDate = user.VipExpirationDate,
+                    phoneNumber = user.PhoneNumber, // Ensure these are returned too
+                    avatarUrl = user.AvatarUrl
                 });
             }
             catch (Exception ex)
@@ -129,5 +131,54 @@ namespace InterviewSimulator.Controllers
                 return BadRequest(new { message = ex.Message });
             }
         }
+
+        [HttpPut("update-profile")]
+        [Authorize]
+        public async Task<IActionResult> UpdateProfile([FromBody] UpdateProfileRequest request)
+        {
+            try
+            {
+                var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userIdStr)) return Unauthorized();
+
+                var userId = int.Parse(userIdStr);
+                var user = await _context.Users.FindAsync(userId);
+
+                if (user == null) return NotFound(new { message = "User not found" });
+
+                // Update fields
+                if (!string.IsNullOrEmpty(request.FullName)) user.FullName = request.FullName;
+                if (!string.IsNullOrEmpty(request.PhoneNumber)) user.PhoneNumber = request.PhoneNumber;
+                if (!string.IsNullOrEmpty(request.AvatarUrl)) user.AvatarUrl = request.AvatarUrl;
+
+                await _context.SaveChangesAsync();
+
+                return Ok(new
+                {
+                    message = "Profile updated successfully.",
+                    user = new
+                    {
+                        userId = user.Id,
+                        fullName = user.FullName,
+                        email = user.Email,
+                        phoneNumber = user.PhoneNumber,
+                        avatarUrl = user.AvatarUrl,
+                        isVip = user.IsVip,
+                        vipExpirationDate = user.VipExpirationDate
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+    }
+
+    public class UpdateProfileRequest
+    {
+        public string? FullName { get; set; }
+        public string? PhoneNumber { get; set; }
+        public string? AvatarUrl { get; set; }
     }
 }

@@ -40,7 +40,7 @@ public partial class MockMateDbContext : DbContext
 
         var connectionString = configuration.GetConnectionString("DBDefault");
 
-        optionsBuilder.UseSqlServer(connectionString);
+        optionsBuilder.UseNpgsql(connectionString);
     }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -49,7 +49,7 @@ public partial class MockMateDbContext : DbContext
         {
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Amount).HasColumnType("decimal(18, 2)");
-            entity.Property(e => e.TransactionDate).HasDefaultValueSql("(getdate())");
+            entity.Property(e => e.TransactionDate).HasDefaultValueSql("CURRENT_TIMESTAMP");
             entity.Property(e => e.TransactionCode).HasMaxLength(100);
             
             entity.HasOne(d => d.User).WithMany(p => p.PaymentTransactions)
@@ -82,7 +82,7 @@ public partial class MockMateDbContext : DbContext
 
             entity.HasIndex(e => e.UserId, "IX_Sessions_UserId");
 
-            entity.Property(e => e.StartedAt).HasDefaultValueSql("(getdate())");
+            entity.Property(e => e.StartedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
             entity.Property(e => e.Status).HasDefaultValue((byte)0);
 
             entity.HasOne(d => d.JobPosition).WithMany(p => p.InterviewSessions)
@@ -135,7 +135,7 @@ public partial class MockMateDbContext : DbContext
             entity.HasIndex(e => e.SessionId, "IX_Details_SessionId");
 
             entity.Property(e => e.AnswerAudioUrl).HasMaxLength(500);
-            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
 
             entity.HasOne(d => d.Session).WithMany(p => p.SessionDetails)
                 .HasForeignKey(d => d.SessionId)
@@ -151,7 +151,7 @@ public partial class MockMateDbContext : DbContext
             entity.HasIndex(e => e.Email, "UQ__Users__A9D10534420FDE55").IsUnique();
 
             entity.Property(e => e.AvatarUrl).HasMaxLength(500);
-            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
             entity.Property(e => e.CvUrl).HasMaxLength(500);
             entity.Property(e => e.Email).HasMaxLength(100);
             entity.Property(e => e.ExperienceYears).HasDefaultValue(0);

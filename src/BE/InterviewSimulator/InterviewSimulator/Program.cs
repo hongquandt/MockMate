@@ -16,7 +16,7 @@ namespace InterviewSimulator
 
             // DB Configuration
             builder.Services.AddDbContext<InterviewSimulator.Models.MockMateDbContext>(options =>
-                options.UseSqlServer(builder.Configuration.GetConnectionString("DBDefault")));
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DBDefault")));
 
             // Auth Configuration
             builder.Services.AddAuthentication(options =>
@@ -97,6 +97,31 @@ namespace InterviewSimulator
             });
 
             var app = builder.Build();
+
+            // Seed Data
+            using (var scope = app.Services.CreateScope())
+            {
+                var services = scope.ServiceProvider;
+                try
+                {
+                    var context = services.GetRequiredService<InterviewSimulator.Models.MockMateDbContext>();
+                    
+                    if (!context.Roles.Any())
+                    {
+                        var adminRole = new InterviewSimulator.Models.Role { RoleName = "Admin", Description = "Administrator" };
+                        var userRole = new InterviewSimulator.Models.Role { RoleName = "User", Description = "Candidate/User" };
+                        
+                        // EF Core will assign IDs 1 and 2 by default for a fresh table
+                        context.Roles.AddRange(adminRole, userRole);
+                        context.SaveChanges();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    var logger = services.GetRequiredService<ILogger<Program>>();
+                    logger.LogError(ex, "An error occurred seeding the DB.");
+                }
+            }
 
             // Configure the HTTP request pipeline.
             if (app.Environment.IsDevelopment())
