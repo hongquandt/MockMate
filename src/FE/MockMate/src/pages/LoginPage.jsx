@@ -61,6 +61,8 @@ const LoginPage = () => {
             const res = await authService.login(formData.email, formData.password, captchaToken);
             if (res.user && res.user.roleId === 1) {
                 navigate('/admin/dashboard');
+            } else if (res.user && res.user.roleId === 3) {
+                navigate('/company/dashboard');
             } else {
                 navigate('/');
             }
