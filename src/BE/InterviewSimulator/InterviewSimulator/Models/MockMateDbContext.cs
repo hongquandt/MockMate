@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 
@@ -116,6 +116,11 @@ public partial class MockMateDbContext : DbContext
                 .HasForeignKey(d => d.CategoryId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_JobPositions_Categories");
+
+            entity.HasOne(d => d.Company).WithMany(p => p.JobPositions)
+                .HasForeignKey(d => d.CompanyId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("FK_JobPositions_Companies");
         });
 
         modelBuilder.Entity<Role>(entity =>

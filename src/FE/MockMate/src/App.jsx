@@ -18,6 +18,12 @@ import AdminUsersPage from './pages/admin/AdminUsersPage'
 import AdminJobsPage from './pages/admin/AdminJobsPage'
 import AdminRevenuePage from './pages/admin/AdminRevenuePage'
 import AdminSettingsPage from './pages/admin/AdminSettingsPage'
+
+// Company Pages
+import CompanyDashboardPage from './pages/company/CompanyDashboardPage'
+import CompanyJobsPage from './pages/company/CompanyJobsPage'
+import CompanyCandidatesPage from './pages/company/CompanyCandidatesPage'
+
 function App() {
   return (
     <Router>
@@ -36,11 +42,19 @@ function App() {
         <Route path="/cv-history" element={<CvHistoryPage />} />
         <Route path="/cv-history/:id" element={<CvHistoryPage />} />
         <Route path="/vip-upgrade" element={<VipUpgradePage />} />
+        
+        {/* Admin Routes */}
         <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
         <Route path="/admin/users" element={<AdminUsersPage />} />
         <Route path="/admin/jobs" element={<AdminJobsPage />} />
         <Route path="/admin/revenue" element={<AdminRevenuePage />} />
         <Route path="/admin/settings" element={<AdminSettingsPage />} />
+
+        {/* Company Routes */}
+        <Route path="/company" element={<CompanyDashboardPage />} />
+        <Route path="/company/dashboard" element={<CompanyDashboardPage />} />
+        <Route path="/company/jobs" element={<CompanyJobsPage />} />
+        <Route path="/company/candidates" element={<CompanyCandidatesPage />} />
       </Routes>
     </Router>
   )

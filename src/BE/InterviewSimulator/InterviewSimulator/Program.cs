@@ -43,6 +43,7 @@ namespace InterviewSimulator
             builder.Services.AddScoped<InterviewSimulator.Services.Interfaces.IAuthService, InterviewSimulator.Services.Implementations.AuthService>();
             builder.Services.AddScoped<InterviewSimulator.Services.Interfaces.IEmailService, InterviewSimulator.Services.Implementations.EmailService>();
             builder.Services.AddScoped<InterviewSimulator.Services.Interfaces.IAdminService, InterviewSimulator.Services.Implementations.AdminService>();
+            builder.Services.AddScoped<InterviewSimulator.Services.Interfaces.ICompanyService, InterviewSimulator.Services.Implementations.CompanyService>();
             builder.Services.AddMemoryCache();
 
             // HttpClient for PayOS API
@@ -105,15 +106,16 @@ namespace InterviewSimulator
                 var services = scope.ServiceProvider;
                 try
                 {
-                    var context = services.GetRequiredService<InterviewSimulator.Models.MockMateDbContext>();
+                     var context = services.GetRequiredService<InterviewSimulator.Models.MockMateDbContext>();
                     
                     if (!context.Roles.Any())
                     {
-                        var adminRole = new InterviewSimulator.Models.Role { RoleName = "Admin", Description = "Administrator" };
-                        var userRole = new InterviewSimulator.Models.Role { RoleName = "User", Description = "Candidate/User" };
+                        var adminRole = new InterviewSimulator.Models.Role { Id = 1, RoleName = "Admin", Description = "Administrator" };
+                        var userRole = new InterviewSimulator.Models.Role { Id = 2, RoleName = "User", Description = "Candidate/User" };
+                        var companyRole = new InterviewSimulator.Models.Role { Id = 3, RoleName = "Company", Description = "Employer/Recruiter" };
                         
                         // EF Core will assign IDs 1 and 2 by default for a fresh table
-                        context.Roles.AddRange(adminRole, userRole);
+                        context.Roles.AddRange(adminRole, userRole, companyRole);
                         context.SaveChanges();
                     }
 
@@ -141,6 +143,41 @@ namespace InterviewSimulator
                                 IsVip = true
                             };
                             context.Users.Add(adminUser);
+                            context.SaveChanges();
+                        }
+                    }
+
+                    // Seed Company Role if not exists
+                    if (!context.Roles.Any(r => r.RoleName == "Company"))
+                    {
+                        context.Roles.Add(new InterviewSimulator.Models.Role { RoleName = "Company", Description = "Employer/Recruiter" });
+                        context.SaveChanges();
+                    }
+
+                    // Seed Company User
+                    if (!context.Users.Any(u => u.Email == "company@mockmate.com"))
+                    {
+                        var companyRole = context.Roles.FirstOrDefault(r => r.RoleName == "Company");
+                        if (companyRole != null)
+                        {
+                            string hash;
+                            using (var sha256 = System.Security.Cryptography.SHA256.Create())
+                            {
+                                var hashedBytes = sha256.ComputeHash(System.Text.Encoding.UTF8.GetBytes("Admin@123"));
+                                hash = Convert.ToBase64String(hashedBytes);
+                            }
+
+                            var companyUser = new InterviewSimulator.Models.User
+                            {
+                                FullName = "Công ty TNHH VNG",
+                                Email = "company@mockmate.com",
+                                PasswordHash = hash,
+                                RoleId = companyRole.Id,
+                                CreatedAt = DateTime.UtcNow,
+                                IsDeleted = false,
+                                IsVip = false
+                            };
+                            context.Users.Add(companyUser);
                             context.SaveChanges();
                         }
                     }

@@ -203,4 +203,35 @@ export const adminService = {
   }
 };
 
+export const companyService = {
+  getDashboardStats: async () => {
+    return (await api.get('/company/dashboard')).data;
+  },
+  getMyJobs: async () => {
+    return (await api.get('/company/jobs')).data;
+  },
+  createJob: async (data) => {
+    return (await api.post('/company/jobs', data)).data;
+  },
+  updateJob: async (id, data) => {
+    return (await api.put(`/company/jobs/${id}`, data)).data;
+  },
+  deleteJob: async (id) => {
+    return (await api.delete(`/company/jobs/${id}`)).data;
+  },
+  toggleJobStatus: async (id) => {
+    return (await api.post(`/company/jobs/${id}/toggle`)).data;
+  },
+  getCandidates: async (jobId) => {
+    const params = jobId ? { jobId } : {};
+    return (await api.get('/company/candidates', { params })).data;
+  },
+  getCandidateResult: async (sessionId) => {
+    return (await api.get(`/company/candidates/${sessionId}`)).data;
+  },
+  getJobCategories: async () => {
+    return (await api.get('/company/job-categories')).data;
+  }
+};
+
 export default api;

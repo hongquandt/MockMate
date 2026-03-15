@@ -378,6 +378,137 @@
     "ReturnTypes": []
   },
   {
+    "ContainingType": "InterviewSimulator.Controllers.CompanyController",
+    "Method": "GetCandidates",
+    "RelativePath": "api/Company/candidates",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "jobId",
+        "Type": "System.Nullable\u00601[[System.Int32, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "InterviewSimulator.Controllers.CompanyController",
+    "Method": "GetCandidateResult",
+    "RelativePath": "api/Company/candidates/{sessionId}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "sessionId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "InterviewSimulator.Controllers.CompanyController",
+    "Method": "GetDashboardStats",
+    "RelativePath": "api/Company/dashboard",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "InterviewSimulator.Controllers.CompanyController",
+    "Method": "GetJobCategories",
+    "RelativePath": "api/Company/job-categories",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "InterviewSimulator.Controllers.CompanyController",
+    "Method": "GetMyJobs",
+    "RelativePath": "api/Company/jobs",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "InterviewSimulator.Controllers.CompanyController",
+    "Method": "CreateJob",
+    "RelativePath": "api/Company/jobs",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "InterviewSimulator.DTOs.CompanyJobCreateDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "InterviewSimulator.Controllers.CompanyController",
+    "Method": "UpdateJob",
+    "RelativePath": "api/Company/jobs/{jobId}",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "jobId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "request",
+        "Type": "InterviewSimulator.DTOs.CompanyJobUpdateDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "InterviewSimulator.Controllers.CompanyController",
+    "Method": "DeleteJob",
+    "RelativePath": "api/Company/jobs/{jobId}",
+    "HttpMethod": "DELETE",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "jobId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "InterviewSimulator.Controllers.CompanyController",
+    "Method": "ToggleJobStatus",
+    "RelativePath": "api/Company/jobs/{jobId}/toggle",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "jobId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
     "ContainingType": "InterviewSimulator.Controllers.InterviewController",
     "Method": "GetSessionDetails",
     "RelativePath": "api/Interview/{id}",
