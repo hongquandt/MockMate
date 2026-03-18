@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { interviewService } from '../services/api';
+import { interviewService, authService } from '../services/api';
 
 const CvHistoryPage = () => {
     const { id } = useParams();
@@ -9,10 +9,23 @@ const CvHistoryPage = () => {
     const [selectedSession, setSelectedSession] = useState(null);
     const [loading, setLoading] = useState(true);
     const [detailLoading, setDetailLoading] = useState(false);
+    const [isVip, setIsVip] = useState(false);
 
     useEffect(() => {
         loadHistory();
+        checkVipStatus();
     }, []);
+
+    const checkVipStatus = async () => {
+        try {
+            const profile = await authService.getUserProfile();
+            const vipActive = profile.isVip && profile.vipExpirationDate && new Date(profile.vipExpirationDate) > new Date();
+            setIsVip(vipActive);
+        } catch (error) {
+            console.error("Failed to check VIP status", error);
+            setIsVip(false);
+        }
+    };
 
     useEffect(() => {
         if (id && history.length > 0) {
@@ -192,19 +205,40 @@ const CvHistoryPage = () => {
                                         Câu hỏi phỏng vấn đã trả lời
                                     </h3>
                                     
+                                    {/* Overall Feedback - VIP only */}
                                     {selectedSession.overallFeedback && selectedSession.overallFeedback !== "Completed by User" && selectedSession.overallFeedback !== "Interview Started" && (
-                                        <div className="bg-purple-50 border border-purple-200 rounded-xl p-4 mb-6">
-                                            <h4 className="font-bold text-purple-700 mb-2 flex items-center gap-1">
-                                                <span className="material-symbols-outlined text-sm">stars</span>
-                                                Nhận xét tổng quan buổi phỏng vấn
-                                                {selectedSession.totalScore != null && (
-                                                    <span className="ml-auto bg-purple-600 text-white px-2 py-0.5 rounded text-xs">
-                                                        Điểm: {selectedSession.totalScore}/10
-                                                    </span>
-                                                )}
-                                            </h4>
-                                            <p className="text-sm text-slate-700 leading-relaxed">{selectedSession.overallFeedback}</p>
-                                        </div>
+                                        isVip ? (
+                                            <div className="bg-purple-50 border border-purple-200 rounded-xl p-4 mb-6">
+                                                <h4 className="font-bold text-purple-700 mb-2 flex items-center gap-1">
+                                                    <span className="material-symbols-outlined text-sm">stars</span>
+                                                    Nhận xét tổng quan buổi phỏng vấn
+                                                    {selectedSession.totalScore != null && (
+                                                        <span className="ml-auto bg-purple-600 text-white px-2 py-0.5 rounded text-xs">
+                                                            Điểm: {selectedSession.totalScore}/10
+                                                        </span>
+                                                    )}
+                                                </h4>
+                                                <p className="text-sm text-slate-700 leading-relaxed">{selectedSession.overallFeedback}</p>
+                                            </div>
+                                        ) : (
+                                            <div className="relative mb-6 rounded-xl overflow-hidden">
+                                                <div className="bg-purple-50 border border-purple-200 rounded-xl p-4 filter blur-[6px] select-none pointer-events-none">
+                                                    <h4 className="font-bold text-purple-700 mb-2">Nhận xét tổng quan buổi phỏng vấn</h4>
+                                                    <p className="text-sm text-slate-700">Đây là phần nhận xét chi tiết từ AI về buổi phỏng vấn của bạn, bao gồm điểm mạnh, điểm yếu và gợi ý cải thiện...</p>
+                                                </div>
+                                                <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/70 backdrop-blur-sm rounded-xl">
+                                                    <span className="material-symbols-outlined text-4xl text-amber-500 mb-2">workspace_premium</span>
+                                                    <p className="font-bold text-slate-800 text-center">Nâng cấp VIP để xem nhận xét AI</p>
+                                                    <p className="text-sm text-slate-500 text-center mt-1 max-w-xs">Nhận phản hồi chi tiết từ AI giúp bạn cải thiện kỹ năng phỏng vấn</p>
+                                                    <button
+                                                        onClick={() => navigate('/vip-upgrade')}
+                                                        className="mt-3 px-5 py-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold rounded-full text-sm shadow-lg shadow-amber-500/25 hover:shadow-amber-500/40 transition-all hover:-translate-y-0.5"
+                                                    >
+                                                        Nâng cấp VIP ngay
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )
                                     )}
 
                                     <div className="space-y-6">
@@ -223,24 +257,56 @@ const CvHistoryPage = () => {
                                                 </div>
 
                                                 {q.aiFeedback && (
-                                                    <div className="bg-green-50 border border-green-100 p-3 rounded-lg flex items-start flex-col gap-2">
-                                                        <div className="flex items-center justify-between w-full">
-                                                            <span className="text-xs font-bold text-green-700 uppercase flex items-center gap-1">
-                                                                <span className="material-symbols-outlined text-[14px]">auto_awesome</span>
-                                                                AI Đánh giá
-                                                            </span>
-                                                            {q.score != null && (
-                                                                <span className="text-xs font-bold bg-green-200 text-green-800 px-2 py-0.5 rounded">
-                                                                    {q.score}/10
+                                                    isVip ? (
+                                                        <div className="bg-green-50 border border-green-100 p-3 rounded-lg flex items-start flex-col gap-2">
+                                                            <div className="flex items-center justify-between w-full">
+                                                                <span className="text-xs font-bold text-green-700 uppercase flex items-center gap-1">
+                                                                    <span className="material-symbols-outlined text-[14px]">auto_awesome</span>
+                                                                    AI Đánh giá
                                                                 </span>
-                                                            )}
+                                                                {q.score != null && (
+                                                                    <span className="text-xs font-bold bg-green-200 text-green-800 px-2 py-0.5 rounded">
+                                                                        {q.score}/10
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                            <p className="text-sm text-green-900">{q.aiFeedback}</p>
                                                         </div>
-                                                        <p className="text-sm text-green-900">{q.aiFeedback}</p>
-                                                    </div>
+                                                    ) : (
+                                                        <div className="relative rounded-lg overflow-hidden">
+                                                            <div className="bg-green-50 border border-green-100 p-3 rounded-lg filter blur-[5px] select-none pointer-events-none">
+                                                                <span className="text-xs font-bold text-green-700 uppercase">AI Đánh giá</span>
+                                                                <p className="text-sm text-green-900">Nhận xét chi tiết về câu trả lời này bao gồm đánh giá nội dung, cấu trúc và gợi ý cải thiện...</p>
+                                                            </div>
+                                                            <div className="absolute inset-0 flex items-center justify-center bg-white/60 backdrop-blur-[2px] rounded-lg">
+                                                                <span className="material-symbols-outlined text-amber-500 text-xl mr-1.5">lock</span>
+                                                                <span className="text-sm font-bold text-slate-700">VIP</span>
+                                                            </div>
+                                                        </div>
+                                                    )
                                                 )}
                                             </div>
                                         ))}
                                     </div>
+
+                                    {/* VIP Upgrade Banner at bottom for non-VIP */}
+                                    {!isVip && (
+                                        <div className="mt-6 p-4 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl flex items-center gap-4">
+                                            <div className="w-12 h-12 bg-gradient-to-br from-amber-400 to-orange-500 rounded-xl flex items-center justify-center text-white shrink-0 shadow-lg shadow-amber-500/20">
+                                                <span className="material-symbols-outlined">workspace_premium</span>
+                                            </div>
+                                            <div className="flex-1">
+                                                <p className="font-bold text-slate-800">Mở khóa đánh giá AI chi tiết</p>
+                                                <p className="text-xs text-slate-500">Xem nhận xét, điểm số và gợi ý cải thiện cho từng câu trả lời</p>
+                                            </div>
+                                            <button
+                                                onClick={() => navigate('/vip-upgrade')}
+                                                className="px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold rounded-lg text-sm shadow hover:shadow-lg transition-all whitespace-nowrap"
+                                            >
+                                                Nâng cấp
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </div>

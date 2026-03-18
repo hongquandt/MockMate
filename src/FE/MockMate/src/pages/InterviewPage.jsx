@@ -16,6 +16,7 @@ const InterviewPage = () => {
     const [startTime, setStartTime] = useState(Date.now()); // Time when the question started
     const [sessionStartTime, setSessionStartTime] = useState(Date.now()); // Time when session started
     const [elapsedTime, setElapsedTime] = useState(0); // Total elapsed seconds
+    const [questionElapsedTime, setQuestionElapsedTime] = useState(0); // Per-question elapsed seconds
 
     const [answers, setAnswers] = useState({}); // Store all answers locally: { index: "answer" }
     const [saving, setSaving] = useState(false);
@@ -80,17 +81,20 @@ const InterviewPage = () => {
         };
     }, []);
 
-    // Timer effect
+    // Timer effect - total session time + per-question time
     useEffect(() => {
         const timer = setInterval(() => {
-            setElapsedTime(Math.floor((Date.now() - sessionStartTime) / 1000));
+            const now = Date.now();
+            setElapsedTime(Math.floor((now - sessionStartTime) / 1000));
+            setQuestionElapsedTime(Math.floor((now - startTime) / 1000));
         }, 1000);
         return () => clearInterval(timer);
-    }, [sessionStartTime]);
+    }, [sessionStartTime, startTime]);
 
     // Reset question start time and load answer when question changes
     useEffect(() => {
         setStartTime(Date.now());
+        setQuestionElapsedTime(0);
         setUserAnswer(answers[currentQuestionIndex] || "");
     }, [currentQuestionIndex]); // Removed 'answers' dependency to avoid loop, managed manually
 
@@ -251,9 +255,13 @@ const InterviewPage = () => {
                     ) : (
                         <>
                             <div className="max-w-2xl text-center space-y-6 w-full">
-                                <div className="flex items-center justify-center gap-2 mb-4">
+                                <div className="flex items-center justify-center gap-3 mb-4">
                                     <div className="px-4 py-1.5 bg-slate-800 rounded-full text-sm font-medium text-slate-400">
                                         Câu hỏi {currentQuestionIndex + 1} / {questions.length}
+                                    </div>
+                                    <div className="px-4 py-1.5 bg-slate-800 rounded-full text-sm font-medium text-amber-400 flex items-center gap-1.5">
+                                        <span className="material-symbols-outlined text-[16px]">hourglass_top</span>
+                                        {formatTime(questionElapsedTime)}
                                     </div>
                                 </div>
                                 
@@ -416,6 +424,24 @@ const InterviewPage = () => {
                                 </div>
                             </div>
                         )}
+
+                        {/* Time Summary */}
+                        <div className="mt-4 pt-4 border-t border-slate-600 space-y-2">
+                            <div className="flex justify-between items-center">
+                                <span className="text-slate-400 flex items-center gap-1">
+                                    <span className="material-symbols-outlined text-[16px]">timer</span>
+                                    Tổng thời gian:
+                                </span>
+                                <span className="font-mono font-bold text-purple-400">{formatTime(elapsedTime)}</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                                <span className="text-slate-400 flex items-center gap-1">
+                                    <span className="material-symbols-outlined text-[16px]">hourglass_top</span>
+                                    Câu hiện tại:
+                                </span>
+                                <span className="font-mono font-bold text-amber-400">{formatTime(questionElapsedTime)}</span>
+                            </div>
+                        </div>
                     </div>
 
                     <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
