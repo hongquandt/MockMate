@@ -129,6 +129,10 @@ export const paymentService = {
       callbackUrl 
     });
     return response.data;
+  },
+  confirmPayment: async (orderCode) => {
+    const response = await api.post('/payment/confirm-payment', { orderCode });
+    return response.data;
   }
 };
 
