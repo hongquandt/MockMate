@@ -23,12 +23,24 @@ const UserProfilePage = () => {
     useEffect(() => {
         loadUserProfile();
 
-        // Check if returning from payment
+        // Check if returning from PayOS payment
+        // PayOS returns: ?status=PAID&orderCode=xxx&code=00&cancel=false&id=xxx
         const params = new URLSearchParams(location.search);
         const status = params.get('status');
         const orderCode = params.get('orderCode');
+        const code = params.get('code');
+        const cancel = params.get('cancel');
         
-        if (status === 'success' && orderCode) {
+        // Detect PayOS return: status=PAID or code=00, with cancel=false
+        const isPaymentSuccess = orderCode && (
+            status === 'PAID' || 
+            status === 'success' || 
+            code === '00' || 
+            cancel === 'false'
+        );
+        const isPaymentCancelled = cancel === 'true' || status === 'CANCELLED' || status === 'cancelled';
+
+        if (isPaymentSuccess && !isPaymentCancelled) {
             setShowSuccessMessage(true);
             // Call backend to verify & activate VIP
             paymentService.confirmPayment(orderCode)
@@ -43,11 +55,8 @@ const UserProfilePage = () => {
                     setTimeout(() => setShowSuccessMessage(false), 10000);
                 });
             window.history.replaceState({}, '', '/profile');
-        } else if (status === 'success') {
-            // Fallback: no orderCode in URL, just reload profile
-            setShowSuccessMessage(true);
-            setTimeout(() => loadUserProfile(), 2000);
-            setTimeout(() => setShowSuccessMessage(false), 10000);
+        } else if (isPaymentCancelled) {
+            alert('Thanh toán đã bị hủy.');
             window.history.replaceState({}, '', '/profile');
         }
     }, [location]);
