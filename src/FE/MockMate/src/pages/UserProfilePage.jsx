@@ -128,7 +128,19 @@ const UserProfilePage = () => {
         );
     }
 
-    if (!user) return null;
+    if (!user) {
+        return (
+            <div className="flex flex-col h-screen items-center justify-center bg-slate-900 text-white">
+                <span className="material-symbols-outlined text-6xl text-red-500 mb-4">error</span>
+                <h2 className="text-2xl font-bold mb-2">Không thể tải thông tin profile</h2>
+                <p className="text-slate-400 mb-6">Đã xảy ra lỗi kết nối với máy chủ (API). Vui lòng kiểm tra lại đường truyền hoặc đăng nhập lại.</p>
+                <div className="flex gap-4">
+                    <button onClick={() => loadUserProfile()} className="px-6 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg shadow font-medium transition-colors">Thử lại</button>
+                    <button onClick={() => navigate('/login')} className="px-6 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg shadow font-medium transition-colors">Về trang đăng nhập</button>
+                </div>
+            </div>
+        );
+    }
 
     const isVipActive = user.isVip && user.vipExpirationDate && new Date(user.vipExpirationDate) > new Date();
 
