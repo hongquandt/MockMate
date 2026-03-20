@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { authService, interviewService } from '../services/api';
+import { authService, interviewService, paymentService } from '../services/api';
 import { uploadService } from '../services/uploadService';
 import logoImg from '../assets/img/z7430605225117_544001c3f21b8fc1cb5af11cb46703c0.jpg';
 
@@ -26,7 +26,25 @@ const UserProfilePage = () => {
         // Check if returning from payment
         const params = new URLSearchParams(location.search);
         const status = params.get('status');
-        if (status === 'success') {
+        const orderCode = params.get('orderCode');
+        
+        if (status === 'success' && orderCode) {
+            setShowSuccessMessage(true);
+            // Call backend to verify & activate VIP
+            paymentService.confirmPayment(orderCode)
+                .then((result) => {
+                    console.log('Payment confirmation result:', result);
+                    loadUserProfile(); // Reload profile to show VIP status
+                })
+                .catch((err) => {
+                    console.error('Payment confirmation failed:', err);
+                })
+                .finally(() => {
+                    setTimeout(() => setShowSuccessMessage(false), 10000);
+                });
+            window.history.replaceState({}, '', '/profile');
+        } else if (status === 'success') {
+            // Fallback: no orderCode in URL, just reload profile
             setShowSuccessMessage(true);
             setTimeout(() => loadUserProfile(), 2000);
             setTimeout(() => setShowSuccessMessage(false), 10000);

@@ -14,4 +14,10 @@ namespace InterviewSimulator.DTOs
         public string CheckoutUrl { get; set; }
         public string OrderCode { get; set; }
     }
+
+    public class ConfirmPaymentRequest
+    {
+        [Required]
+        public string OrderCode { get; set; } = "";
+    }
 }
