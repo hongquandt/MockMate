@@ -121,3 +121,4 @@ D:\Ky7\EXE\ProjectEXE\MockMate\src\BE\InterviewSimulator\InterviewSimulator\obj\
 D:\Ky7\EXE\ProjectEXE\MockMate\src\BE\InterviewSimulator\InterviewSimulator\bin\Debug\net8.0\Npgsql.dll
 D:\Ky7\EXE\ProjectEXE\MockMate\src\BE\InterviewSimulator\InterviewSimulator\bin\Debug\net8.0\Npgsql.EntityFrameworkCore.PostgreSQL.dll
 D:\Ky7\EXE\ProjectEXE\MockMate\src\BE\InterviewSimulator\InterviewSimulator\bin\Debug\net8.0\CloudinaryDotNet.dll
+D:\Ky7\EXE\ProjectEXE\MockMate\src\BE\InterviewSimulator\InterviewSimulator\obj\Debug\net8.0\staticwebassets.upToDateCheck.txt

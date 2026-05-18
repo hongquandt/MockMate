@@ -1,16 +1,79 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
-const MODEL_NAME = import.meta.env.VITE_GEMINI_MODEL || "gemini-1.5-flash";
+const PRIMARY_MODEL = import.meta.env.VITE_GEMINI_MODEL || "gemini-2.5-flash";
+
+// Fallback model chain: if primary model quota is exhausted, try the next one
+const FALLBACK_MODELS = [
+  PRIMARY_MODEL,
+  "gemini-1.5-flash",
+  "gemini-2.0-flash-lite",
+];
 
 const genAI = new GoogleGenerativeAI(API_KEY);
 
+/**
+ * Helper: call Gemini with automatic retry + fallback models.
+ * - On 429 (rate limit): waits and retries up to MAX_RETRIES times.
+ * - If all retries fail for a model: tries the next fallback model.
+ * - Extracts retry delay from error message when available.
+ */
+const MAX_RETRIES = 3;
+
+async function callWithRetryAndFallback(prompt) {
+  for (const modelName of FALLBACK_MODELS) {
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        console.log(`[AI] Trying model: ${modelName} (attempt ${attempt}/${MAX_RETRIES})`);
+        const model = genAI.getGenerativeModel({ model: modelName });
+        const result = await model.generateContent(prompt);
+        const response = await result.response;
+        let text = response.text();
+
+        // Clean up markdown code fences if present
+        text = text.replace(/```json/g, '').replace(/```/g, '').trim();
+        return JSON.parse(text);
+      } catch (error) {
+        const is429 = error?.message?.includes("429") || error?.status === 429;
+        const isQuotaZero = error?.message?.includes("limit: 0");
+
+        if (isQuotaZero) {
+          // Model's free tier is completely disabled (limit: 0), skip to next model immediately
+          console.warn(`[AI] Model "${modelName}" free tier is disabled (limit: 0). Trying next model...`);
+          break; // break retry loop, go to next model
+        }
+
+        if (is429 && attempt < MAX_RETRIES) {
+          // Extract retry delay from error message, default to exponential backoff
+          const retryMatch = error.message?.match(/retry in (\d+(\.\d+)?)/i);
+          const waitSeconds = retryMatch ? Math.ceil(parseFloat(retryMatch[1])) : (attempt * 15);
+          console.warn(`[AI] Rate limited on "${modelName}". Waiting ${waitSeconds}s before retry...`);
+          await new Promise(resolve => setTimeout(resolve, waitSeconds * 1000));
+          continue;
+        }
+
+        // Last attempt for this model failed
+        if (attempt === MAX_RETRIES) {
+          console.warn(`[AI] All ${MAX_RETRIES} retries exhausted for model "${modelName}". Trying next model...`);
+          break; // try next model
+        }
+
+        // Non-429 error, throw immediately
+        throw error;
+      }
+    }
+  }
+
+  // All models exhausted
+  throw new Error(
+    "Tất cả các model AI đều đang bị giới hạn. Vui lòng đợi vài phút rồi thử lại, " +
+    "hoặc kiểm tra API Key tại https://aistudio.google.com/apikey"
+  );
+}
+
 export const aiService = {
   analyzeCv: async (cvText) => {
-    try {
-      const model = genAI.getGenerativeModel({ model: MODEL_NAME });
-
-      const prompt = `
+    const prompt = `
         ROLE: You are a professional Technical Recruiter. Your goal is to provide an objective, balanced evaluation of the candidate's CV, validating their readiness for the industry while being fair.
 
         CANDIDATE CV CONTENT:
@@ -53,24 +116,11 @@ export const aiService = {
         Return ONLY valid JSON.
       `;
 
-      const result = await model.generateContent(prompt);
-      const response = await result.response;
-      let text = response.text();
-      
-      // Clean up markdown if present
-      text = text.replace(/```json/g, '').replace(/```/g, '').trim();
-      
-      return JSON.parse(text);
-    } catch (error) {
-      console.error("AI Analysis Error:", error);
-      throw error;
-    }
+    return await callWithRetryAndFallback(prompt);
   },
 
   generateInterviewQuestions: async (cvText) => {
     try {
-      const model = genAI.getGenerativeModel({ model: MODEL_NAME });
-
       const prompt = `
         ROLE: You are a Technical Interviewer.
         CONTEXT: The candidate has provided their CV.
@@ -96,12 +146,7 @@ export const aiService = {
         Return ONLY valid JSON array.
       `;
 
-      const result = await model.generateContent(prompt);
-      const response = await result.response;
-      let text = response.text();
-      
-      text = text.replace(/```json/g, '').replace(/```/g, '').trim();
-      return JSON.parse(text);
+      return await callWithRetryAndFallback(prompt);
     } catch (error) {
       console.error("AI Question Generation Error:", error);
       return [
@@ -114,8 +159,6 @@ export const aiService = {
 
   generateCustomQuestions: async (cvText, setupData) => {
     try {
-      const model = genAI.getGenerativeModel({ model: MODEL_NAME });
-
       const prompt = `
         ROLE: You are an Expert Technical Recruiter & Interviewer.
         CONTEXT: The candidate has provided their CV and selected specific criteria for this mock interview.
@@ -151,12 +194,7 @@ export const aiService = {
         Return ONLY a valid JSON array of format string[].
       `;
 
-      const result = await model.generateContent(prompt);
-      const response = await result.response;
-      let text = response.text();
-      
-      text = text.replace(/```json/g, '').replace(/```/g, '').trim();
-      return JSON.parse(text);
+      return await callWithRetryAndFallback(prompt);
     } catch (error) {
       console.error("AI Custom Question Generation Error:", error);
       // Fallback
@@ -169,10 +207,7 @@ export const aiService = {
   },
 
   gradeInterviewAnswers: async (qaArray) => {
-    try {
-      const model = genAI.getGenerativeModel({ model: MODEL_NAME });
-
-      const prompt = `
+    const prompt = `
         ROLE: You are an expert Technical Interviewer.
         CONTEXT: The candidate has completed a technical interview. I will provide you with the questions asked and the candidate's answers.
 
@@ -201,15 +236,6 @@ export const aiService = {
         Return ONLY valid JSON.
       `;
 
-      const result = await model.generateContent(prompt);
-      const response = await result.response;
-      let text = response.text();
-      
-      text = text.replace(/```json/g, '').replace(/```/g, '').trim();
-      return JSON.parse(text);
-    } catch (error) {
-      console.error("AI Grading Error:", error);
-      throw error;
-    }
+    return await callWithRetryAndFallback(prompt);
   }
 };
