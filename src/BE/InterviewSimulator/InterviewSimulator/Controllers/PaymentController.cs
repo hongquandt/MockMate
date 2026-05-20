@@ -200,13 +200,13 @@ namespace InterviewSimulator.Controllers
 
                     transaction.User.IsVip = true;
 
-                    if (transaction.User.VipExpirationDate.HasValue && transaction.User.VipExpirationDate > DateTime.Now)
+                    if (transaction.User.VipExpirationDate.HasValue && transaction.User.VipExpirationDate > DateTime.UtcNow)
                     {
                         transaction.User.VipExpirationDate = transaction.User.VipExpirationDate.Value.AddDays(durationDays);
                     }
                     else
                     {
-                        transaction.User.VipExpirationDate = DateTime.Now.AddDays(durationDays);
+                        transaction.User.VipExpirationDate = DateTime.UtcNow.AddDays(durationDays);
                     }
 
                     await _context.SaveChangesAsync();
@@ -278,13 +278,13 @@ namespace InterviewSimulator.Controllers
 
                     transaction.User.IsVip = true;
 
-                    if (transaction.User.VipExpirationDate.HasValue && transaction.User.VipExpirationDate > DateTime.Now)
+                    if (transaction.User.VipExpirationDate.HasValue && transaction.User.VipExpirationDate > DateTime.UtcNow)
                     {
                         transaction.User.VipExpirationDate = transaction.User.VipExpirationDate.Value.AddDays(durationDays);
                     }
                     else
                     {
-                        transaction.User.VipExpirationDate = DateTime.Now.AddDays(durationDays);
+                        transaction.User.VipExpirationDate = DateTime.UtcNow.AddDays(durationDays);
                     }
 
                     await _context.SaveChangesAsync();

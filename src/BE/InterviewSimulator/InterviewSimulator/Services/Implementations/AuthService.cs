@@ -34,10 +34,13 @@ namespace InterviewSimulator.Services.Implementations
 
         public async Task<AuthResponse> LoginAsync(LoginRequest request)
         {
-            // Verify Captcha
-            if (string.IsNullOrEmpty(request.CaptchaToken) || !await VerifyCaptchaAsync(request.CaptchaToken))
+            // Verify Captcha (Bypass in Development for Postman testing)
+            if (!_env.IsDevelopment())
             {
-                throw new Exception("Invalid Captcha. Please try again.");
+                if (string.IsNullOrEmpty(request.CaptchaToken) || !await VerifyCaptchaAsync(request.CaptchaToken))
+                {
+                    throw new Exception("Invalid Captcha. Please try again.");
+                }
             }
 
             var user = await _context.Users

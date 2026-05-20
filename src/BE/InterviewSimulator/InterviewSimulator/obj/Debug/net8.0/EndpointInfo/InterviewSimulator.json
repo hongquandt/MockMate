@@ -1045,6 +1045,37 @@
           }
         }
       }
+    },
+    "/api/Payment/confirm-payment": {
+      "post": {
+        "tags": [
+          "Payment"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmPaymentRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmPaymentRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmPaymentRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1140,6 +1171,19 @@
               "$ref": "#/components/schemas/DetailResult"
             },
             "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ConfirmPaymentRequest": {
+        "required": [
+          "orderCode"
+        ],
+        "type": "object",
+        "properties": {
+          "orderCode": {
+            "minLength": 1,
+            "type": "string"
           }
         },
         "additionalProperties": false

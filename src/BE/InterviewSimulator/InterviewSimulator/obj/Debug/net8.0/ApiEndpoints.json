@@ -594,6 +594,22 @@
   },
   {
     "ContainingType": "InterviewSimulator.Controllers.PaymentController",
+    "Method": "ConfirmPayment",
+    "RelativePath": "api/Payment/confirm-payment",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "InterviewSimulator.DTOs.ConfirmPaymentRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "InterviewSimulator.Controllers.PaymentController",
     "Method": "CreatePaymentLink",
     "RelativePath": "api/Payment/create-payment-link",
     "HttpMethod": "POST",
