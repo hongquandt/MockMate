@@ -218,7 +218,9 @@ const CvHistoryPage = () => {
                                                         </span>
                                                     )}
                                                 </h4>
-                                                <p className="text-sm text-slate-700 leading-relaxed">{selectedSession.overallFeedback}</p>
+                                                <div className="text-sm text-slate-700 leading-relaxed">
+                                                    <FormatText text={selectedSession.overallFeedback} />
+                                                </div>
                                             </div>
                                         ) : (
                                             <div className="relative mb-6 rounded-xl overflow-hidden">
@@ -317,6 +319,25 @@ const CvHistoryPage = () => {
             </div>
         </div>
     );
+};
+
+// Component to parse basic markdown-like text (\n and **bold**)
+const FormatText = ({ text }) => {
+    if (!text) return null;
+    return text.split('\n').map((line, idx) => {
+        if (!line.trim()) return <br key={idx} />;
+        const parts = line.split(/(\*\*.*?\*\*)/g);
+        return (
+            <span key={idx} className="block mb-1">
+                {parts.map((part, i) => {
+                    if (part.startsWith('**') && part.endsWith('**')) {
+                        return <strong key={i} className="font-bold text-slate-900">{part.slice(2, -2)}</strong>;
+                    }
+                    return <span key={i}>{part}</span>;
+                })}
+            </span>
+        );
+    });
 };
 
 export default CvHistoryPage;

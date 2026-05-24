@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useLocation, Link, useNavigate } from 'react-router-dom';
 import { interviewService } from '../services/api';
 import { aiService } from '../services/aiService';
@@ -23,6 +23,13 @@ const InterviewPage = () => {
     const [showSaveSuccess, setShowSaveSuccess] = useState(false);
 
     const [isGrading, setIsGrading] = useState(false);
+
+    // --- Emotion Detection ---
+    const videoRef = useRef(null);
+    const canvasRef = useRef(null);
+    const [cameraActive, setCameraActive] = useState(false);
+    const [emotion, setEmotion] = useState(null);
+    const [emotionHistory, setEmotionHistory] = useState([]);
 
     // Fallback data if page is refreshed or accessed directly
     const defaultAnalysisData = {
@@ -78,8 +85,69 @@ const InterviewPage = () => {
         return () => {
             if (window.speechSynthesis) window.speechSynthesis.cancel();
             if (window.recognitionInstance) window.recognitionInstance.stop();
+            if (videoRef.current && videoRef.current.srcObject) {
+                const tracks = videoRef.current.srcObject.getTracks();
+                tracks.forEach(track => track.stop());
+            }
         };
     }, []);
+
+    // --- Emotion Detection Functions ---
+    const startCamera = async () => {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ 
+                video: { width: 320, height: 240, facingMode: "user" } 
+            });
+            if (videoRef.current) {
+                videoRef.current.srcObject = stream;
+                setCameraActive(true);
+            }
+        } catch (err) {
+            console.error("Lỗi truy cập camera:", err);
+        }
+    };
+
+    const detectEmotion = async () => {
+        if (!videoRef.current || !canvasRef.current || !cameraActive || isGrading) return;
+
+        const canvas = canvasRef.current;
+        const context = canvas.getContext('2d');
+        const video = videoRef.current;
+
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const imageData = canvas.toDataURL('image/jpeg', 0.8);
+
+        try {
+            const response = await fetch('http://localhost:5000/detect-emotion', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ image: imageData }),
+            });
+            const data = await response.json();
+            if (data.success && data.result) {
+                setEmotion(data.result);
+                setEmotionHistory(prev => [
+                    ...prev, 
+                    { questionIndex: currentQuestionIndex, emotion_vi: data.result.emotion_vi, isIssue: data.result.isPsychologicalIssue }
+                ]);
+            }
+        } catch (error) {
+            // Ignore connection errors
+        }
+    };
+
+    useEffect(() => {
+        startCamera();
+    }, []);
+
+    useEffect(() => {
+        let intervalId;
+        if (cameraActive && sessionId && !isGrading) {
+            intervalId = setInterval(() => detectEmotion(), 2000); // 2 seconds
+        }
+        return () => clearInterval(intervalId);
+    }, [cameraActive, sessionId, isGrading, currentQuestionIndex]);
+
 
     // Timer effect - total session time + per-question time
     useEffect(() => {
@@ -362,7 +430,7 @@ const InterviewPage = () => {
                                                 }));
 
                                                 if (sessionId) {
-                                                    const gradingResult = await aiService.gradeInterviewAnswers(qaToGrade);
+                                                    const gradingResult = await aiService.gradeInterviewAnswers(qaToGrade, emotionHistory);
                                                     await interviewService.completeSession(sessionId, gradingResult);
                                                 }
                                                 navigate(`/cv-history/${sessionId}`);
@@ -442,6 +510,42 @@ const InterviewPage = () => {
                                 <span className="font-mono font-bold text-amber-400">{formatTime(questionElapsedTime)}</span>
                             </div>
                         </div>
+                    </div>
+
+                    {/* Camera Feed for Emotion AI */}
+                    <div className="bg-slate-700/50 rounded-xl p-4 mb-6">
+                        <h3 className="font-bold text-sm text-slate-300 flex items-center gap-2 mb-3">
+                            <span className="material-symbols-outlined text-green-400">psychology</span>
+                            AI Theo dõi Tâm lý
+                        </h3>
+                        <div className="relative rounded-lg overflow-hidden bg-black aspect-video flex items-center justify-center border border-slate-600">
+                            <video 
+                                ref={videoRef} 
+                                autoPlay 
+                                playsInline 
+                                muted 
+                                className={`w-full h-full object-cover ${!cameraActive ? 'hidden' : ''}`}
+                            ></video>
+                            <canvas ref={canvasRef} width={320} height={240} className="hidden" />
+                            {!cameraActive && (
+                                <div className="text-slate-500 text-xs flex flex-col items-center">
+                                    <span className="material-symbols-outlined mb-1">videocam_off</span>
+                                    Camera tắt
+                                </div>
+                            )}
+                            {emotion && cameraActive && (
+                                <div className="absolute top-2 right-2 bg-black/60 backdrop-blur text-white text-[10px] px-2 py-1 rounded border border-slate-500 flex items-center gap-1">
+                                    <span className={`w-2 h-2 rounded-full ${emotion.isPsychologicalIssue ? 'bg-red-500' : 'bg-green-500'} animate-pulse`}></span>
+                                    {emotion.emotion_vi}
+                                </div>
+                            )}
+                        </div>
+                        {emotion && emotion.isPsychologicalIssue && (
+                            <p className="text-xs text-red-400 mt-2 flex items-center gap-1">
+                                <span className="material-symbols-outlined text-[14px]">warning</span>
+                                Hãy hít thở sâu và giữ bình tĩnh nhé!
+                            </p>
+                        )}
                     </div>
 
                     <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
