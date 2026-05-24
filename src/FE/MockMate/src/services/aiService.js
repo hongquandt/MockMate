@@ -1,14 +1,10 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
-const PRIMARY_MODEL = import.meta.env.VITE_GEMINI_MODEL || "gemini-2.5-flash";
+const PRIMARY_MODEL = import.meta.env.VITE_GEMINI_MODEL || "gemini-2.0-flash";
 
 // Fallback model chain: if primary model quota is exhausted, try the next one
-const FALLBACK_MODELS = [
-  PRIMARY_MODEL,
-  "gemini-1.5-flash",
-  "gemini-2.0-flash-lite",
-];
+const FALLBACK_MODELS = [PRIMARY_MODEL, "gemini-flash-latest", "gemini-2.0-flash-lite"];
 
 const genAI = new GoogleGenerativeAI(API_KEY);
 
@@ -21,53 +17,73 @@ const genAI = new GoogleGenerativeAI(API_KEY);
 const MAX_RETRIES = 3;
 
 async function callWithRetryAndFallback(prompt) {
+  let lastErrorMsg = "";
+
   for (const modelName of FALLBACK_MODELS) {
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
       try {
-        console.log(`[AI] Trying model: ${modelName} (attempt ${attempt}/${MAX_RETRIES})`);
+        console.log(
+          `[AI] Trying model: ${modelName} (attempt ${attempt}/${MAX_RETRIES})`,
+        );
         const model = genAI.getGenerativeModel({ model: modelName });
         const result = await model.generateContent(prompt);
         const response = await result.response;
         let text = response.text();
 
         // Clean up markdown code fences if present
-        text = text.replace(/```json/g, '').replace(/```/g, '').trim();
+        text = text
+          .replace(/```json/g, "")
+          .replace(/```/g, "")
+          .trim();
         return JSON.parse(text);
       } catch (error) {
-        const is429 = error?.message?.includes("429") || error?.status === 429;
-        const isQuotaZero = error?.message?.includes("limit: 0");
+        lastErrorMsg = error?.message || error?.toString();
+        const is429 = lastErrorMsg.includes("429") || error?.status === 429;
+        const is503 = lastErrorMsg.includes("503") || error?.status === 503;
+        const isQuotaZero = lastErrorMsg.includes("limit: 0");
 
         if (isQuotaZero) {
           // Model's free tier is completely disabled (limit: 0), skip to next model immediately
-          console.warn(`[AI] Model "${modelName}" free tier is disabled (limit: 0). Trying next model...`);
+          console.warn(
+            `[AI] Model "${modelName}" free tier is disabled (limit: 0). Trying next model...`,
+          );
           break; // break retry loop, go to next model
         }
 
-        if (is429 && attempt < MAX_RETRIES) {
+        if ((is429 || is503) && attempt < MAX_RETRIES) {
           // Extract retry delay from error message, default to exponential backoff
-          const retryMatch = error.message?.match(/retry in (\d+(\.\d+)?)/i);
-          const waitSeconds = retryMatch ? Math.ceil(parseFloat(retryMatch[1])) : (attempt * 15);
-          console.warn(`[AI] Rate limited on "${modelName}". Waiting ${waitSeconds}s before retry...`);
-          await new Promise(resolve => setTimeout(resolve, waitSeconds * 1000));
+          const retryMatch = lastErrorMsg.match(/retry in (\d+(\.\d+)?)/i);
+          const waitSeconds = retryMatch
+            ? Math.ceil(parseFloat(retryMatch[1]))
+            : attempt * 15;
+          console.warn(
+            `[AI] Rate limited or overloaded (503/429) on "${modelName}". Waiting ${waitSeconds}s before retry...`,
+          );
+          await new Promise((resolve) =>
+            setTimeout(resolve, waitSeconds * 1000),
+          );
           continue;
         }
 
         // Last attempt for this model failed
         if (attempt === MAX_RETRIES) {
-          console.warn(`[AI] All ${MAX_RETRIES} retries exhausted for model "${modelName}". Trying next model...`);
+          console.warn(
+            `[AI] All ${MAX_RETRIES} retries exhausted for model "${modelName}". Trying next model...`,
+          );
           break; // try next model
         }
 
-        // Non-429 error, throw immediately
-        throw error;
+        // Non-429/503 error, throw immediately
+        throw new Error(`[Google AI Error] ${lastErrorMsg}`);
       }
     }
   }
 
   // All models exhausted
   throw new Error(
-    "Tất cả các model AI đều đang bị giới hạn. Vui lòng đợi vài phút rồi thử lại, " +
-    "hoặc kiểm tra API Key tại https://aistudio.google.com/apikey"
+    "Tất cả các model AI đều đang bị giới hạn hoặc API Key đã hết lượt sử dụng.\nChi tiết lỗi từ Google: " + 
+    lastErrorMsg + 
+    "\n\nVui lòng đợi vài phút rồi thử lại, hoặc tạo một API Key mới tại https://aistudio.google.com/apikey"
   );
 }
 
@@ -152,7 +168,7 @@ export const aiService = {
       return [
         "Could you describe a challenging project you worked on during your studies?",
         "What are your core technical strengths?",
-        "Explain a technical concept you learned recently."
+        "Explain a technical concept you learned recently.",
       ];
     }
   },
@@ -201,29 +217,63 @@ export const aiService = {
       return [
         "Xin bạn hãy giới thiệu ngắn gọn bản thân (Please introduce yourself).",
         "Kể về một dự án khó nhằn bạn từng tham gia trong công việc.",
-        "Điểm mạnh nhất của bạn đối với vị trí này là gì?"
+        "Điểm mạnh nhất của bạn đối với vị trí này là gì?",
       ];
     }
   },
 
-  gradeInterviewAnswers: async (qaArray) => {
+  gradeInterviewAnswers: async (qaArray, emotionHistory = []) => {
+    let emotionSummary = "Không có dữ liệu cảm xúc.";
+    if (emotionHistory && emotionHistory.length > 0) {
+      const issues = emotionHistory.filter((e) => e.isIssue).length;
+      const total = emotionHistory.length;
+      const ratio = issues / total;
+
+      let freqMap = {};
+      emotionHistory.forEach((e) => {
+        if (e.emotion_vi) {
+          freqMap[e.emotion_vi] = (freqMap[e.emotion_vi] || 0) + 1;
+        }
+      });
+      const dominantEmotion =
+        Object.keys(freqMap).length > 0
+          ? Object.keys(freqMap).reduce((a, b) =>
+              freqMap[a] > freqMap[b] ? a : b,
+            )
+          : "Không rõ";
+
+      if (ratio > 0.4) {
+        emotionSummary = `Ứng viên có biểu hiện căng thẳng, sợ hãi hoặc tiêu cực (chiếm ${(ratio * 100).toFixed(0)}% thời gian). Cảm xúc chủ đạo là ${dominantEmotion}.`;
+      } else if (ratio > 0.2) {
+        emotionSummary = `Ứng viên đôi lúc thể hiện sự lo âu, thiếu tự tin (chiếm ${(ratio * 100).toFixed(0)}% thời gian). Cảm xúc chủ đạo là ${dominantEmotion}.`;
+      } else {
+        emotionSummary = `Ứng viên giữ được bình tĩnh và thái độ ổn định. Cảm xúc chủ đạo là ${dominantEmotion}.`;
+      }
+    }
+
     const prompt = `
         ROLE: You are an expert Technical Interviewer.
         CONTEXT: The candidate has completed a technical interview. I will provide you with the questions asked and the candidate's answers.
+        Additionally, an AI emotion detection system has monitored the candidate's face during the interview.
 
         Q&A PAIRS:
         """
         ${JSON.stringify(qaArray, null, 2)}
         """
 
+        EMOTION ANALYSIS SUMMARY:
+        "${emotionSummary}"
+
         TASK:
         Grade each answer and provide overall feedback for the interview session.
+        Based on the EMOTION ANALYSIS SUMMARY, provide specific feedback on their psychological state and recommend how they can practice to improve their confidence and emotion management.
         Be constructive, objective, and professional.
 
         OUTPUT JSON FORMAT:
         {
           "totalScore": number (0-10),
           "overallFeedback": "A summary of their performance across all questions, highlighting key strengths and areas for improvement.",
+          "emotionFeedback": "Detailed feedback on their psychological state during the interview based on the EMOTION ANALYSIS SUMMARY, including recommendations for practice.",
           "details": [
             {
               "questionIndex": number,
@@ -236,6 +286,16 @@ export const aiService = {
         Return ONLY valid JSON.
       `;
 
-    return await callWithRetryAndFallback(prompt);
-  }
+    const result = await callWithRetryAndFallback(prompt);
+
+    // Merge emotionFeedback into overallFeedback so it gets saved to DB
+    if (result && result.emotionFeedback) {
+      result.overallFeedback =
+        (result.overallFeedback || "") +
+        "\n\n💡 **Đánh giá Cảm xúc & Tâm lý:**\n" +
+        result.emotionFeedback;
+    }
+
+    return result;
+  },
 };

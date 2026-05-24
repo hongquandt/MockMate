@@ -12,6 +12,7 @@ import InterviewPage from './pages/InterviewPage'
 import HistoryPage from './pages/HistoryPage'
 import CvHistoryPage from './pages/CvHistoryPage'
 import VipUpgradePage from './pages/VipUpgradePage'
+import EmotionTestPage from './pages/EmotionTestPage'
 import InterviewSetupPage from './pages/InterviewSetupPage'
 import AdminDashboardPage from './pages/admin/AdminDashboardPage'
 import AdminUsersPage from './pages/admin/AdminUsersPage'
@@ -42,6 +43,7 @@ function App() {
         <Route path="/cv-history" element={<CvHistoryPage />} />
         <Route path="/cv-history/:id" element={<CvHistoryPage />} />
         <Route path="/vip-upgrade" element={<VipUpgradePage />} />
+        <Route path="/emotion-test" element={<EmotionTestPage />} />
         
         {/* Admin Routes */}
         <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
