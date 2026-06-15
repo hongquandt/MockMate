@@ -156,7 +156,8 @@ const CompanyJobsPage = () => {
                                         <th className="py-4 px-4 font-bold">Category</th>
                                         <th className="py-4 px-4 font-bold">Position</th>
                                         <th className="py-4 px-4 font-bold text-center">Candidates</th>
-                                        <th className="py-4 px-4 font-bold">Status</th>
+                                        <th className="py-4 px-4 font-bold">Visibility</th>
+                                        <th className="py-4 px-4 font-bold">Admin Status</th>
                                         <th className="py-4 px-4 text-right font-bold">Actions</th>
                                     </tr>
                                 </thead>
@@ -178,14 +179,21 @@ const CompanyJobsPage = () => {
                                                 <span className={`px-3 py-1 rounded-full text-xs font-bold ${
                                                     j.isActive ? 'bg-green-100 text-green-600' : 'bg-slate-100 text-slate-600'
                                                 }`}>
-                                                    {j.isActive ? 'Active' : 'Closed'}
+                                                    {j.isActive ? 'Active' : 'Hidden'}
+                                                </span>
+                                            </td>
+                                            <td className="py-4 px-4">
+                                                <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                                                    j.status === 1 ? 'bg-green-100 text-green-600' : j.status === 2 ? 'bg-red-100 text-red-600' : 'bg-orange-100 text-orange-600'
+                                                }`}>
+                                                    {j.status === 1 ? 'Approved' : j.status === 2 ? 'Rejected' : 'Pending Review'}
                                                 </span>
                                             </td>
                                             <td className="py-4 px-4 text-right space-x-2">
                                                 <button onClick={() => navigate(`/company/candidates?jobId=${j.id}`)} className="text-slate-500 hover:bg-slate-100 p-2 rounded-lg transition-colors material-symbols-outlined ml-1" title="View Candidates">visibility</button>
                                                 <button onClick={() => handleOpenModal(j)} className="text-primary hover:bg-primary/10 p-2 rounded-lg transition-colors material-symbols-outlined ml-1" title="Edit">edit</button>
-                                                <button onClick={() => handleToggleStatus(j.id)} className={`${j.isActive ? 'text-orange-500 hover:bg-orange-50' : 'text-green-600 hover:bg-green-50'} p-2 rounded-lg transition-colors material-symbols-outlined ml-1`} title={j.isActive ? 'Close Job' : 'Reactivate Job'}>
-                                                    {j.isActive ? 'block' : 'check_circle'}
+                                                <button onClick={() => handleToggleStatus(j.id)} className={`${j.isActive ? 'text-orange-500 hover:bg-orange-50' : 'text-green-600 hover:bg-green-50'} p-2 rounded-lg transition-colors material-symbols-outlined ml-1`} title={j.isActive ? 'Hide Job' : 'Show Job'}>
+                                                    {j.isActive ? 'visibility_off' : 'visibility'}
                                                 </button>
                                                 <button onClick={() => handleDelete(j.id)} className="text-red-500 hover:bg-red-50 p-2 rounded-lg transition-colors material-symbols-outlined ml-1" title="Delete">delete</button>
                                             </td>

@@ -12,6 +12,7 @@ const InterviewSetupPage = () => {
   const [interviewType, setInterviewType] = useState('');
   const [jobDescription, setJobDescription] = useState('');
   const [language, setLanguage] = useState('Vietnamese');
+  const [voiceLanguage, setVoiceLanguage] = useState('Vietnamese');
 
   const industries = ['IT', 'Marketing', 'Communication', 'Data Science', 'BA'];
   const difficulties = ['Intern', 'Fresher', 'Junior', 'Senior'];
@@ -32,7 +33,8 @@ const InterviewSetupPage = () => {
       difficulty,
       interviewType,
       jobDescription,
-      language
+      language,
+      voiceLanguage
     };
 
     navigate('/interview', { state: { analysisData: analysisData, setupData } });
@@ -94,6 +96,17 @@ const InterviewSetupPage = () => {
                        <option key={lang} value={lang}>{lang}</option>
                      ))}
                    </select>
+                </div>
+
+                {/* Giọng đọc câu hỏi */}
+                <div>
+                   <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Giọng đọc câu hỏi <span className="text-red-500">*</span></label>
+                   <select required value={voiceLanguage} onChange={e => setVoiceLanguage(e.target.value)} className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-300 dark:border-slate-600 rounded-xl px-4 py-3 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all">
+                     {languages.map(lang => (
+                       <option key={lang} value={lang}>{lang}</option>
+                     ))}
+                   </select>
+                   <p className="text-xs text-slate-400 mt-1.5">Chọn giọng đọc khi AI đọc câu hỏi cho bạn nghe</p>
                 </div>
             </div>
 

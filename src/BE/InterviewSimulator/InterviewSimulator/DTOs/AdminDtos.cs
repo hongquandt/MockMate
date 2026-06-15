@@ -22,6 +22,8 @@ namespace InterviewSimulator.DTOs
         public bool IsActive { get; set; }
         public string Requirements { get; set; }
         public string? Description { get; set; }
+        public int Status { get; set; }
+        public string? CompanyName { get; set; }
     }
 
     public class RevenueStatsDto

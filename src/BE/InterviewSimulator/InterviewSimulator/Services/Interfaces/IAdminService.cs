@@ -18,6 +18,7 @@ namespace InterviewSimulator.Services.Interfaces
         // Job Management
         Task<List<JobAdminDto>> GetAllJobsAsync();
         Task<bool> ToggleJobStatusAsync(int jobId);
+        Task<bool> ApproveJobAsync(int jobId, int status);
         Task<JobAdminDto> CreateJobAsync(JobCreateDto dto);
         Task<JobAdminDto> UpdateJobAsync(int jobId, JobUpdateDto dto);
         Task<bool> DeleteJobAsync(int jobId);

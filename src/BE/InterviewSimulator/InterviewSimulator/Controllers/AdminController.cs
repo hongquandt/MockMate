@@ -104,6 +104,18 @@ namespace InterviewSimulator.Controllers
             return Ok(new { message = "Đã thay đổi trạng thái bài đăng." });
         }
 
+        [HttpPost("jobs/{jobId}/approve")]
+        public async Task<IActionResult> ApproveJob(int jobId, [FromQuery] int status)
+        {
+            if (!IsAdmin()) return Forbid();
+
+            var success = await _adminService.ApproveJobAsync(jobId, status);
+            if (!success) return NotFound(new { message = "Không tìm thấy công việc này." });
+
+            var statusMsg = status == 1 ? "Đã duyệt" : status == 2 ? "Đã từ chối" : "Đã đưa về chờ duyệt";
+            return Ok(new { message = $"Cập nhật thành công: {statusMsg}." });
+        }
+
         [HttpPost("jobs")]
         public async Task<IActionResult> CreateJob([FromBody] JobCreateDto request)
         {

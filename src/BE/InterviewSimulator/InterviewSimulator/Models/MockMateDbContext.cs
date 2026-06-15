@@ -110,6 +110,7 @@ public partial class MockMateDbContext : DbContext
             entity.HasKey(e => e.Id).HasName("PK__JobPosit__3214EC07251D81B3");
 
             entity.Property(e => e.IsActive).HasDefaultValue(true);
+            entity.Property(e => e.Status).HasDefaultValue(0);
             entity.Property(e => e.Title).HasMaxLength(100);
 
             entity.HasOne(d => d.Category).WithMany(p => p.JobPositions)
