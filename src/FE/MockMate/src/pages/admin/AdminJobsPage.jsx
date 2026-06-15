@@ -65,6 +65,15 @@ const AdminJobsPage = () => {
         }
     };
 
+    const handleApproveJob = async (jobId, status) => {
+        try {
+            await adminService.approveJob(jobId, status);
+            fetchJobs();
+        } catch (error) {
+            alert(error.response?.data?.message || 'Failed to approve job.');
+        }
+    };
+
     const handleOpenModal = (job = null) => {
         if (job) {
             setEditingJob(job);
@@ -118,8 +127,12 @@ const AdminJobsPage = () => {
     const filteredJobs = jobsList.filter(j => {
         const matchesSearch = j.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
                               j.categoryName.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesStatus = statusFilter === 'All' ? true : 
-                              statusFilter === 'Active' ? j.isActive : !j.isActive;
+                              
+        let matchesStatus = true;
+        if (statusFilter === 'Approved') matchesStatus = j.status === 1;
+        if (statusFilter === 'Pending') matchesStatus = j.status === 0;
+        if (statusFilter === 'Rejected') matchesStatus = j.status === 2;
+        
         return matchesSearch && matchesStatus;
     });
 
@@ -150,8 +163,9 @@ const AdminJobsPage = () => {
                                 className="border border-slate-200 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
                             >
                                 <option value="All">All Statuses</option>
-                                <option value="Active">Active</option>
-                                <option value="Pending">Pending Review / Inactive</option>
+                                <option value="Approved">Approved</option>
+                                <option value="Pending">Pending Review</option>
+                                <option value="Rejected">Rejected</option>
                             </select>
                         </div>
                         <button 
@@ -186,22 +200,35 @@ const AdminJobsPage = () => {
                                                 <div className="w-8 h-8 rounded-md bg-blue-100 flex items-center justify-center text-blue-600 font-black">
                                                     {j.categoryName.charAt(0)}
                                                 </div>
-                                                {j.categoryName}
+                                                <div>
+                                                    <div>{j.categoryName}</div>
+                                                    <div className="text-xs text-slate-500 font-normal">{j.companyName}</div>
+                                                </div>
                                             </td>
-                                            <td className="py-4 px-4 text-slate-700 font-medium">{j.title}</td>
+                                            <td className="py-4 px-4 text-slate-700 font-medium whitespace-nowrap">
+                                                {j.title}
+                                                <div className="text-xs mt-1">
+                                                    <span className={`px-2 py-0.5 rounded-full ${j.isActive ? 'bg-slate-100 text-slate-600' : 'bg-slate-100 text-slate-400'}`}>
+                                                        {j.isActive ? 'Company Enabled' : 'Company Disabled'}
+                                                    </span>
+                                                </div>
+                                            </td>
                                             <td className="py-4 px-4">
                                                 <span className={`px-3 py-1 rounded-full text-xs font-bold ${
-                                                    j.isActive ? 'bg-green-100 text-green-600' : 'bg-orange-100 text-orange-600'
+                                                    j.status === 1 ? 'bg-green-100 text-green-600' : j.status === 2 ? 'bg-red-100 text-red-600' : 'bg-orange-100 text-orange-600'
                                                 }`}>
-                                                    {j.isActive ? 'Active' : 'Pending Review'}
+                                                    {j.status === 1 ? 'Approved' : j.status === 2 ? 'Rejected' : 'Pending Approval'}
                                                 </span>
                                             </td>
                                             <td className="py-4 px-4 text-right space-x-2">
                                                 <button onClick={() => handleOpenModal(j)} className="text-primary hover:bg-primary/10 p-2 rounded-lg transition-colors material-symbols-outlined ml-1" title="Edit">edit</button>
-                                                {!j.isActive ? (
-                                                    <button onClick={() => handleToggleStatus(j.id)} className="text-green-600 hover:bg-green-50 p-2 rounded-lg transition-colors material-symbols-outlined ml-1" title="Approve">check_circle</button>
+                                                {j.status === 0 ? (
+                                                    <>
+                                                        <button onClick={() => handleApproveJob(j.id, 1)} className="text-green-600 hover:bg-green-50 p-2 rounded-lg transition-colors material-symbols-outlined ml-1" title="Approve">check_circle</button>
+                                                        <button onClick={() => handleApproveJob(j.id, 2)} className="text-red-600 hover:bg-red-50 p-2 rounded-lg transition-colors material-symbols-outlined ml-1" title="Reject">cancel</button>
+                                                    </>
                                                 ) : (
-                                                    <button onClick={() => handleToggleStatus(j.id)} className="text-orange-500 hover:bg-orange-50 p-2 rounded-lg transition-colors material-symbols-outlined ml-1" title="Deactivate">block</button>
+                                                    <button onClick={() => handleApproveJob(j.id, 0)} className="text-orange-500 hover:bg-orange-50 p-2 rounded-lg transition-colors material-symbols-outlined ml-1" title="Revoke Approval">undo</button>
                                                 )}
                                                 <button onClick={() => handleDelete(j.id)} className="text-red-500 hover:bg-red-50 p-2 rounded-lg transition-colors material-symbols-outlined ml-1" title="Delete">delete</button>
                                             </td>

@@ -21,6 +21,7 @@ namespace InterviewSimulator.DTOs
         public string Requirements { get; set; }
         public string? Description { get; set; }
         public int CandidateCount { get; set; }
+        public int Status { get; set; }
     }
 
     public class CompanyJobCreateDto

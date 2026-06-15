@@ -185,6 +185,9 @@ export const adminService = {
   toggleJobStatus: async (jobId) => {
     return (await api.post(`/admin/jobs/${jobId}/toggle`)).data;
   },
+  approveJob: async (jobId, status) => {
+    return (await api.post(`/admin/jobs/${jobId}/approve?status=${status}`)).data;
+  },
   createJob: async (data) => {
     return (await api.post('/admin/jobs', data)).data;
   },

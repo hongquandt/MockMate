@@ -23,6 +23,11 @@ const InterviewPage = () => {
     const [showSaveSuccess, setShowSaveSuccess] = useState(false);
 
     const [isGrading, setIsGrading] = useState(false);
+    const currentIndexRef = useRef(0);
+
+    useEffect(() => {
+        currentIndexRef.current = currentQuestionIndex;
+    }, [currentQuestionIndex]);
 
     // --- Emotion Detection ---
     const videoRef = useRef(null);
@@ -212,7 +217,7 @@ const InterviewPage = () => {
         if ('speechSynthesis' in window) {
             window.speechSynthesis.cancel();
             const utterance = new SpeechSynthesisUtterance(text);
-            utterance.lang = 'en-US'; 
+            utterance.lang = setupData?.voiceLanguage === 'Vietnamese' ? 'vi-VN' : 'en-US'; 
             utterance.rate = 1.0;
             utterance.pitch = 1.0;
             utterance.onstart = () => setIsSpeaking(true);
@@ -238,7 +243,8 @@ const InterviewPage = () => {
         }
 
         const recognition = new SpeechRecognition();
-        recognition.lang = 'en-US'; // Default to English for tech interviews
+        // Dynamically get the language based on setup
+        recognition.lang = setupData?.language === 'Vietnamese' ? 'vi-VN' : 'en-US';
         recognition.interimResults = true;
         recognition.continuous = true;
 
@@ -251,7 +257,14 @@ const InterviewPage = () => {
                 }
             }
             if (finalTranscript) {
-                 handleAnswerChange(userAnswer + " " + finalTranscript); // Use handleAnswerChange to sync state
+                 setUserAnswer((prev) => {
+                     const newAnswer = prev ? prev + " " + finalTranscript : finalTranscript;
+                     setAnswers(prevAnswers => ({
+                         ...prevAnswers,
+                         [currentIndexRef.current]: newAnswer
+                     }));
+                     return newAnswer;
+                 });
             }
         };
         recognition.onerror = (event) => {
@@ -272,6 +285,78 @@ const InterviewPage = () => {
     const toggleListening = () => {
         if (isListening) stopListening();
         else startListening();
+    };
+
+    // --- Emotion Advice ---
+    const getEmotionAdvice = (emotionData) => {
+        if (!emotionData) return null;
+        const label = (emotionData.emotion_vi || '').toLowerCase();
+
+        if (label.includes('vui') || label.includes('happy')) {
+            return {
+                icon: 'sentiment_very_satisfied',
+                color: 'text-green-400',
+                bg: 'bg-green-500/10 border border-green-500/30',
+                title: '😊 Tuyệt vời!',
+                message: 'Bạn đang có tâm trạng rất tốt. Hãy duy trì năng lượng tích cực này — sự tự tin sẽ tạo ấn tượng mạnh với nhà tuyển dụng!',
+            };
+        }
+        if (label.includes('bình tĩnh') || label.includes('neutral') || label.includes('calm')) {
+            return {
+                icon: 'self_improvement',
+                color: 'text-blue-400',
+                bg: 'bg-blue-500/10 border border-blue-500/30',
+                title: '😌 Bình tĩnh',
+                message: 'Bạn đang rất ổn định và tập trung. Đây là trạng thái lý tưởng — tiếp tục giữ vững nhịp độ và trả lời rõ ràng, mạch lạc.',
+            };
+        }
+        if (label.includes('sợ') || label.includes('lo') || label.includes('fear') || label.includes('anxious')) {
+            return {
+                icon: 'favorite',
+                color: 'text-orange-400',
+                bg: 'bg-orange-500/10 border border-orange-500/30',
+                title: '💪 Bạn làm được!',
+                message: 'Hít thở sâu 3 giây, thở ra chậm rãi. Lo lắng là bình thường — hãy nhớ rằng bạn đã chuẩn bị kỹ lưỡng và xứng đáng có mặt ở đây!',
+            };
+        }
+        if (label.includes('buồn') || label.includes('sad')) {
+            return {
+                icon: 'wb_sunny',
+                color: 'text-yellow-400',
+                bg: 'bg-yellow-500/10 border border-yellow-500/30',
+                title: '🌟 Cố lên nào!',
+                message: 'Mỗi câu hỏi là một cơ hội để toả sáng. Hãy nhớ lại những điểm mạnh của bạn và tự tin chia sẻ câu chuyện của mình.',
+            };
+        }
+        if (label.includes('tức') || label.includes('angry') || label.includes('disgust') || label.includes('ghê')) {
+            return {
+                icon: 'spa',
+                color: 'text-red-400',
+                bg: 'bg-red-500/10 border border-red-500/30',
+                title: '🧘 Hãy thư giãn',
+                message: 'Bạn đang có dấu hiệu căng thẳng. Dừng lại vài giây, nhắm mắt hít thở và thư giãn cơ mặt trước khi tiếp tục.',
+            };
+        }
+        if (label.includes('ngạc nhiên') || label.includes('surprise')) {
+            return {
+                icon: 'lightbulb',
+                color: 'text-purple-400',
+                bg: 'bg-purple-500/10 border border-purple-500/30',
+                title: '💡 Thú vị!',
+                message: 'Câu hỏi hay quá phải không? Hãy dành 2-3 giây suy nghĩ trước khi trả lời — nhà tuyển dụng đánh giá cao sự cẩn thận.',
+            };
+        }
+        // Fallback for any unrecognized issue
+        if (emotionData.isPsychologicalIssue) {
+            return {
+                icon: 'warning',
+                color: 'text-red-400',
+                bg: 'bg-red-500/10 border border-red-500/30',
+                title: '⚠️ Chú ý',
+                message: 'Hãy hít thở sâu và giữ bình tĩnh nhé! Bạn đã chuẩn bị tốt rồi.',
+            };
+        }
+        return null;
     };
 
     return (
@@ -355,9 +440,9 @@ const InterviewPage = () => {
                                 <div className="relative group">
                                     <textarea 
                                         value={userAnswer}
-                                        onChange={(e) => handleAnswerChange(e.target.value)}
-                                        placeholder="Nhập câu trả lời của bạn hoặc bấm Micro để nói..."
-                                        className="w-full h-40 bg-slate-800 border border-slate-600 rounded-xl p-4 pr-12 text-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
+                                        readOnly
+                                        placeholder="Vui lòng bấm Micro để nói câu trả lời của bạn..."
+                                        className="w-full h-40 bg-slate-800 border border-slate-600 rounded-xl p-4 pr-12 text-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all cursor-not-allowed"
                                     ></textarea>
                                     
                                     <div className="absolute bottom-4 right-4 flex gap-2">
@@ -375,7 +460,7 @@ const InterviewPage = () => {
                                 
                                 <div className="flex justify-between items-center mt-2">
                                     <p className="text-xs text-slate-500 italic">
-                                        {isListening ? "Đang nghe... (Nói tiếng Anh/Việt)" : "Tips: Bạn có thể nhập text hoặc dùng giọng nói."}
+                                        {isListening ? `Đang nghe... (${setupData?.language || 'English'})` : "Tips: Bấm micro để ghi âm câu trả lời."}
                                     </p>
                                     <button 
                                         onClick={() => saveCurrentAnswer(true)}
@@ -540,12 +625,19 @@ const InterviewPage = () => {
                                 </div>
                             )}
                         </div>
-                        {emotion && emotion.isPsychologicalIssue && (
-                            <p className="text-xs text-red-400 mt-2 flex items-center gap-1">
-                                <span className="material-symbols-outlined text-[14px]">warning</span>
-                                Hãy hít thở sâu và giữ bình tĩnh nhé!
-                            </p>
-                        )}
+                        {emotion && (() => {
+                            const advice = getEmotionAdvice(emotion);
+                            if (!advice) return null;
+                            return (
+                                <div className={`mt-3 rounded-lg p-3 ${advice.bg}`}>
+                                    <p className={`text-xs font-bold ${advice.color} flex items-center gap-1.5 mb-1`}>
+                                        <span className={`material-symbols-outlined text-[14px]`}>{advice.icon}</span>
+                                        {advice.title}
+                                    </p>
+                                    <p className="text-xs text-slate-300 leading-relaxed">{advice.message}</p>
+                                </div>
+                            );
+                        })()}
                     </div>
 
                     <h3 className="font-bold text-lg mb-4 flex items-center gap-2">

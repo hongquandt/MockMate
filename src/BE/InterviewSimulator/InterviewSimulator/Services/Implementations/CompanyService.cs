@@ -50,7 +50,8 @@ namespace InterviewSimulator.Services.Implementations
                 Requirements = j.Requirements ?? "",
                 Description = j.Description ?? "",
                 IsActive = j.IsActive ?? false,
-                CandidateCount = j.InterviewSessions.Count
+                CandidateCount = j.InterviewSessions.Count,
+                Status = j.Status
             }).ToList();
         }
 
@@ -63,7 +64,8 @@ namespace InterviewSimulator.Services.Implementations
                 Title = dto.Title,
                 Description = dto.Description,
                 Requirements = dto.Requirements,
-                IsActive = true
+                IsActive = true,
+                Status = 0 // 0: Pending for Admin Approval
             };
 
             _context.JobPositions.Add(job);
@@ -80,7 +82,8 @@ namespace InterviewSimulator.Services.Implementations
                 Requirements = job.Requirements ?? "",
                 Description = job.Description ?? "",
                 IsActive = job.IsActive ?? false,
-                CandidateCount = 0
+                CandidateCount = 0,
+                Status = job.Status
             };
         }
 
@@ -109,7 +112,8 @@ namespace InterviewSimulator.Services.Implementations
                 Requirements = job.Requirements ?? "",
                 Description = job.Description ?? "",
                 IsActive = job.IsActive ?? false,
-                CandidateCount = candidatesCount
+                CandidateCount = candidatesCount,
+                Status = job.Status
             };
         }
 

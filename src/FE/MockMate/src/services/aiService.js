@@ -90,42 +90,44 @@ async function callWithRetryAndFallback(prompt) {
 export const aiService = {
   analyzeCv: async (cvText) => {
     const prompt = `
-        ROLE: You are a professional Technical Recruiter. Your goal is to provide an objective, balanced evaluation of the candidate's CV, validating their readiness for the industry while being fair.
+        ROLE: You are an expert HR and Recruitment Specialist. Your goal is to provide an objective, balanced evaluation of the candidate's CV, validating their readiness for their chosen industry while being fair.
 
-        CANDIDATE CV CONTENT:
+        INDUSTRY AGNOSTIC CV CONTENT:
         """
-        ${cvText}
+        \${cvText}
         """
 
         SCORING RUBRIC (Professional & Objective):
-        1. Impact & Results (Weight: 30%): Look for tangible results. If metrics are missing, look for clear ownership and successful delivery of features/tasks.
-           - High score: Quantifiable impact or complex problem solving.
+        1. Impact & Results (Weight: 30%): Look for tangible results, measurable achievements, or clear demonstrations of executing their duties.
+           - High score: Quantifiable impact or complex problem solving in their field.
            - Medium score: Clear responsibilities and successful completion of tasks.
            - Low score: Vague descriptions without clear outcomes.
-        2. Technical Proficiency (Weight: 30%): Assess the depth and relevance of skills mentioned.
-        3. Experience Quality (Weight: 20%): Logical progression and relevant projects.
-        4. Structure & Clarity (Weight: 20%): Professional formatting and clarity.
+        2. Professional Skills (Weight: 30%): Assess the depth, relevance, and proficiency of skills mentioned, including hard and soft skills applicable to their industry.
+        3. Experience Quality (Weight: 20%): Logical progression, relevant projects, or work history.
+        4. Structure & Clarity (Weight: 20%): Professional formatting, grammar, and clarity.
 
         TASK:
         Analyze the CV and provide a structured JSON output.
         
         IMPORTANT: 
+        - The candidate's CV might be in English or Vietnamese. You must read and evaluate it regardless of its language.
         - Be objective. Do not be overly harsh, but do not give high scores for free.
         - A solid, employable CV should typically score between 70-80. Outstanding ones can go higher (85+).
         - Highlight specific gaps that, if fixed, would genuinely improve their employability.
-        - Generate 3-5 relevant technical interview questions based on the skills and gaps.
+        - Generate 3-5 relevant interview questions based on their domain, skills, and gaps.
+        - Regardless of the CV's original language, ALL text values in the JSON output MUST be written entirely in Vietnamese (Tiếng Việt), including summary, strengths, weaknesses, and interview questions.
 
         OUTPUT JSON FORMAT:
         {
             "matchScore": number (0-100),
-            "skills": ["skill1", "skill2"],
-            "strengths": ["Strong point 1", "Strong point 2"],
-            "weaknesses": ["Improvement area 1", "Improvement area 2"],
-            "summary": "Professional summary of the candidate's level.",
+            "skills": ["kỹ năng 1", "kỹ năng 2"],
+            "strengths": ["Điểm mạnh 1", "Điểm mạnh 2"],
+            "weaknesses": ["Điểm cần cải thiện 1", "Điểm cần cải thiện 2"],
+            "summary": "Đánh giá tổng quan về trình độ ứng viên (bằng tiếng Việt).",
             "interviewQuestions": [
-                "Question 1",
-                "Question 2",
-                "Question 3"
+                "Câu hỏi 1",
+                "Câu hỏi 2",
+                "Câu hỏi 3"
             ]
         }
         
@@ -138,7 +140,7 @@ export const aiService = {
   generateInterviewQuestions: async (cvText) => {
     try {
       const prompt = `
-        ROLE: You are a Technical Interviewer.
+        ROLE: You are a Professional Interviewer.
         CONTEXT: The candidate has provided their CV.
         
         CV CONTENT:
@@ -147,8 +149,8 @@ export const aiService = {
         """
         
         TASK:
-        Generate 5 deeper technical interview questions specifically focusing on the "Education" (what they learned) and "Skills" (what they claim to know) sections of the CV.
-        Verify if they truly understand the concepts they listed.
+        Generate 5 deeper interview questions specifically focusing on the "Education" (what they learned) and "Skills" (what they claim to know) sections of the CV.
+        Verify if they truly understand the concepts or tools they listed.
         
         OUTPUT JSON FORMAT:
         [
@@ -176,7 +178,7 @@ export const aiService = {
   generateCustomQuestions: async (cvText, setupData) => {
     try {
       const prompt = `
-        ROLE: You are an Expert Technical Recruiter & Interviewer.
+        ROLE: You are an Expert HR & Recruiter.
         CONTEXT: The candidate has provided their CV and selected specific criteria for this mock interview.
         
         CV CONTENT:
@@ -252,7 +254,7 @@ export const aiService = {
     }
 
     const prompt = `
-        ROLE: You are an expert Technical Interviewer.
+        ROLE: You are an Expert Interviewer and Assessor.
         CONTEXT: The candidate has completed a technical interview. I will provide you with the questions asked and the candidate's answers.
         Additionally, an AI emotion detection system has monitored the candidate's face during the interview.
 
@@ -268,17 +270,19 @@ export const aiService = {
         Grade each answer and provide overall feedback for the interview session.
         Based on the EMOTION ANALYSIS SUMMARY, provide specific feedback on their psychological state and recommend how they can practice to improve their confidence and emotion management.
         Be constructive, objective, and professional.
+        
+        IMPORTANT: ALL your feedback text (overallFeedback, emotionFeedback, aiFeedback) MUST be written entirely in Vietnamese.
 
         OUTPUT JSON FORMAT:
         {
           "totalScore": number (0-10),
-          "overallFeedback": "A summary of their performance across all questions, highlighting key strengths and areas for improvement.",
-          "emotionFeedback": "Detailed feedback on their psychological state during the interview based on the EMOTION ANALYSIS SUMMARY, including recommendations for practice.",
+          "overallFeedback": "Tổng kết đánh giá phần trả lời của ứng viên, nhấn mạnh điểm mạnh và điểm yếu (bằng tiếng Việt).",
+          "emotionFeedback": "Đánh giá chi tiết về tâm lý ứng viên dựa trên EMOTION ANALYSIS SUMMARY và đưa ra lời khuyên (bằng tiếng Việt).",
           "details": [
             {
               "questionIndex": number,
               "score": number (0-10, grade for this specific question),
-              "aiFeedback": "Specific feedback for this answer, what they did well, what was missing."
+              "aiFeedback": "Nhận xét chi tiết cho câu trả lời này: ứng viên làm tốt điều gì, thiếu sót điều gì (bằng tiếng Việt)."
             }
           ]
         }

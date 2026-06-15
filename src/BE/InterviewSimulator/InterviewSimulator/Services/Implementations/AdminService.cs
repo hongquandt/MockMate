@@ -25,8 +25,8 @@ namespace InterviewSimulator.Services.Implementations
             // Sessions started but maybe not finished or just getting all mock sessions
             var activeSessions = await _context.InterviewSessions.CountAsync(); 
             
-            // Assuming false or null IsActive means pending approval
-            var pendingJobs = await _context.JobPositions.CountAsync(j => j.IsActive == false || j.IsActive == null);
+            // Status == 0 means pending approval constraint
+            var pendingJobs = await _context.JobPositions.CountAsync(j => j.Status == 0);
             
             var totalRevenue = await _context.PaymentTransactions.Where(t => t.Status == 1).SumAsync(t => t.Amount);
 
@@ -147,6 +147,7 @@ namespace InterviewSimulator.Services.Implementations
         {
             return await _context.JobPositions
                 .Include(j => j.Category)
+                .Include(j => j.Company)
                 .OrderByDescending(j => j.Id)
                 .Select(j => new JobAdminDto
                 {
@@ -156,7 +157,9 @@ namespace InterviewSimulator.Services.Implementations
                     CategoryName = j.Category != null ? j.Category.Name : "General",
                     Requirements = j.Requirements ?? "",
                     Description = j.Description ?? "",
-                    IsActive = j.IsActive ?? false
+                    IsActive = j.IsActive ?? false,
+                    Status = j.Status,
+                    CompanyName = j.Company != null ? j.Company.FullName : "Unknown"
                 }).ToListAsync();
         }
 
@@ -166,6 +169,16 @@ namespace InterviewSimulator.Services.Implementations
             if (job == null) return false;
 
             job.IsActive = !(job.IsActive ?? false);
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
+        public async Task<bool> ApproveJobAsync(int jobId, int status)
+        {
+            var job = await _context.JobPositions.FindAsync(jobId);
+            if (job == null) return false;
+
+            job.Status = status;
             await _context.SaveChangesAsync();
             return true;
         }
@@ -191,7 +204,9 @@ namespace InterviewSimulator.Services.Implementations
                 Title = job.Title,
                 CategoryName = job.Category?.Name ?? "General",
                 Requirements = job.Requirements,
-                IsActive = job.IsActive ?? false
+                IsActive = job.IsActive ?? false,
+                Status = job.Status,
+                CompanyName = "Unknown"
             };
         }
 
@@ -216,7 +231,9 @@ namespace InterviewSimulator.Services.Implementations
                 Title = job.Title,
                 CategoryName = job.Category?.Name ?? "General",
                 Requirements = job.Requirements,
-                IsActive = job.IsActive ?? false
+                IsActive = job.IsActive ?? false,
+                Status = job.Status,
+                CompanyName = job.Company?.FullName ?? "Unknown"
             };
         }
 

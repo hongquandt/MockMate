@@ -137,3 +137,20 @@ dist
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# ========================
+# .NET / Visual Studio
+# ========================
+.vs/
+bin/
+obj/
+*.user
+*.suo
+*.csproj.user
+*.dbmdl
+*.jfm
+*.pfx
+*.publishsettings
+*.DotSettings.user
+build-log.txt
+build_output.txt
