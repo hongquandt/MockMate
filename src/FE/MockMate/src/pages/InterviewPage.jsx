@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useLocation, Link, useNavigate } from 'react-router-dom';
 import { interviewService } from '../services/api';
 import { aiService } from '../services/aiService';
@@ -16,12 +16,25 @@ const InterviewPage = () => {
     const [startTime, setStartTime] = useState(Date.now()); // Time when the question started
     const [sessionStartTime, setSessionStartTime] = useState(Date.now()); // Time when session started
     const [elapsedTime, setElapsedTime] = useState(0); // Total elapsed seconds
+    const [questionElapsedTime, setQuestionElapsedTime] = useState(0); // Per-question elapsed seconds
 
     const [answers, setAnswers] = useState({}); // Store all answers locally: { index: "answer" }
     const [saving, setSaving] = useState(false);
     const [showSaveSuccess, setShowSaveSuccess] = useState(false);
 
     const [isGrading, setIsGrading] = useState(false);
+    const currentIndexRef = useRef(0);
+
+    useEffect(() => {
+        currentIndexRef.current = currentQuestionIndex;
+    }, [currentQuestionIndex]);
+
+    // --- Emotion Detection ---
+    const videoRef = useRef(null);
+    const canvasRef = useRef(null);
+    const [cameraActive, setCameraActive] = useState(false);
+    const [emotion, setEmotion] = useState(null);
+    const [emotionHistory, setEmotionHistory] = useState([]);
 
     // Fallback data if page is refreshed or accessed directly
     const defaultAnalysisData = {
@@ -77,20 +90,84 @@ const InterviewPage = () => {
         return () => {
             if (window.speechSynthesis) window.speechSynthesis.cancel();
             if (window.recognitionInstance) window.recognitionInstance.stop();
+            if (videoRef.current && videoRef.current.srcObject) {
+                const tracks = videoRef.current.srcObject.getTracks();
+                tracks.forEach(track => track.stop());
+            }
         };
     }, []);
 
-    // Timer effect
+    // --- Emotion Detection Functions ---
+    const startCamera = async () => {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ 
+                video: { width: 320, height: 240, facingMode: "user" } 
+            });
+            if (videoRef.current) {
+                videoRef.current.srcObject = stream;
+                setCameraActive(true);
+            }
+        } catch (err) {
+            console.error("Lỗi truy cập camera:", err);
+        }
+    };
+
+    const detectEmotion = async () => {
+        if (!videoRef.current || !canvasRef.current || !cameraActive || isGrading) return;
+
+        const canvas = canvasRef.current;
+        const context = canvas.getContext('2d');
+        const video = videoRef.current;
+
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const imageData = canvas.toDataURL('image/jpeg', 0.8);
+
+        try {
+            const response = await fetch('http://localhost:5000/detect-emotion', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ image: imageData }),
+            });
+            const data = await response.json();
+            if (data.success && data.result) {
+                setEmotion(data.result);
+                setEmotionHistory(prev => [
+                    ...prev, 
+                    { questionIndex: currentQuestionIndex, emotion_vi: data.result.emotion_vi, isIssue: data.result.isPsychologicalIssue }
+                ]);
+            }
+        } catch (error) {
+            // Ignore connection errors
+        }
+    };
+
+    useEffect(() => {
+        startCamera();
+    }, []);
+
+    useEffect(() => {
+        let intervalId;
+        if (cameraActive && sessionId && !isGrading) {
+            intervalId = setInterval(() => detectEmotion(), 2000); // 2 seconds
+        }
+        return () => clearInterval(intervalId);
+    }, [cameraActive, sessionId, isGrading, currentQuestionIndex]);
+
+
+    // Timer effect - total session time + per-question time
     useEffect(() => {
         const timer = setInterval(() => {
-            setElapsedTime(Math.floor((Date.now() - sessionStartTime) / 1000));
+            const now = Date.now();
+            setElapsedTime(Math.floor((now - sessionStartTime) / 1000));
+            setQuestionElapsedTime(Math.floor((now - startTime) / 1000));
         }, 1000);
         return () => clearInterval(timer);
-    }, [sessionStartTime]);
+    }, [sessionStartTime, startTime]);
 
     // Reset question start time and load answer when question changes
     useEffect(() => {
         setStartTime(Date.now());
+        setQuestionElapsedTime(0);
         setUserAnswer(answers[currentQuestionIndex] || "");
     }, [currentQuestionIndex]); // Removed 'answers' dependency to avoid loop, managed manually
 
@@ -140,7 +217,7 @@ const InterviewPage = () => {
         if ('speechSynthesis' in window) {
             window.speechSynthesis.cancel();
             const utterance = new SpeechSynthesisUtterance(text);
-            utterance.lang = 'en-US'; 
+            utterance.lang = setupData?.voiceLanguage === 'Vietnamese' ? 'vi-VN' : 'en-US'; 
             utterance.rate = 1.0;
             utterance.pitch = 1.0;
             utterance.onstart = () => setIsSpeaking(true);
@@ -166,7 +243,8 @@ const InterviewPage = () => {
         }
 
         const recognition = new SpeechRecognition();
-        recognition.lang = 'en-US'; // Default to English for tech interviews
+        // Dynamically get the language based on setup
+        recognition.lang = setupData?.language === 'Vietnamese' ? 'vi-VN' : 'en-US';
         recognition.interimResults = true;
         recognition.continuous = true;
 
@@ -179,7 +257,14 @@ const InterviewPage = () => {
                 }
             }
             if (finalTranscript) {
-                 handleAnswerChange(userAnswer + " " + finalTranscript); // Use handleAnswerChange to sync state
+                 setUserAnswer((prev) => {
+                     const newAnswer = prev ? prev + " " + finalTranscript : finalTranscript;
+                     setAnswers(prevAnswers => ({
+                         ...prevAnswers,
+                         [currentIndexRef.current]: newAnswer
+                     }));
+                     return newAnswer;
+                 });
             }
         };
         recognition.onerror = (event) => {
@@ -200,6 +285,78 @@ const InterviewPage = () => {
     const toggleListening = () => {
         if (isListening) stopListening();
         else startListening();
+    };
+
+    // --- Emotion Advice ---
+    const getEmotionAdvice = (emotionData) => {
+        if (!emotionData) return null;
+        const label = (emotionData.emotion_vi || '').toLowerCase();
+
+        if (label.includes('vui') || label.includes('happy')) {
+            return {
+                icon: 'sentiment_very_satisfied',
+                color: 'text-green-400',
+                bg: 'bg-green-500/10 border border-green-500/30',
+                title: '😊 Tuyệt vời!',
+                message: 'Bạn đang có tâm trạng rất tốt. Hãy duy trì năng lượng tích cực này — sự tự tin sẽ tạo ấn tượng mạnh với nhà tuyển dụng!',
+            };
+        }
+        if (label.includes('bình tĩnh') || label.includes('neutral') || label.includes('calm')) {
+            return {
+                icon: 'self_improvement',
+                color: 'text-blue-400',
+                bg: 'bg-blue-500/10 border border-blue-500/30',
+                title: '😌 Bình tĩnh',
+                message: 'Bạn đang rất ổn định và tập trung. Đây là trạng thái lý tưởng — tiếp tục giữ vững nhịp độ và trả lời rõ ràng, mạch lạc.',
+            };
+        }
+        if (label.includes('sợ') || label.includes('lo') || label.includes('fear') || label.includes('anxious')) {
+            return {
+                icon: 'favorite',
+                color: 'text-orange-400',
+                bg: 'bg-orange-500/10 border border-orange-500/30',
+                title: '💪 Bạn làm được!',
+                message: 'Hít thở sâu 3 giây, thở ra chậm rãi. Lo lắng là bình thường — hãy nhớ rằng bạn đã chuẩn bị kỹ lưỡng và xứng đáng có mặt ở đây!',
+            };
+        }
+        if (label.includes('buồn') || label.includes('sad')) {
+            return {
+                icon: 'wb_sunny',
+                color: 'text-yellow-400',
+                bg: 'bg-yellow-500/10 border border-yellow-500/30',
+                title: '🌟 Cố lên nào!',
+                message: 'Mỗi câu hỏi là một cơ hội để toả sáng. Hãy nhớ lại những điểm mạnh của bạn và tự tin chia sẻ câu chuyện của mình.',
+            };
+        }
+        if (label.includes('tức') || label.includes('angry') || label.includes('disgust') || label.includes('ghê')) {
+            return {
+                icon: 'spa',
+                color: 'text-red-400',
+                bg: 'bg-red-500/10 border border-red-500/30',
+                title: '🧘 Hãy thư giãn',
+                message: 'Bạn đang có dấu hiệu căng thẳng. Dừng lại vài giây, nhắm mắt hít thở và thư giãn cơ mặt trước khi tiếp tục.',
+            };
+        }
+        if (label.includes('ngạc nhiên') || label.includes('surprise')) {
+            return {
+                icon: 'lightbulb',
+                color: 'text-purple-400',
+                bg: 'bg-purple-500/10 border border-purple-500/30',
+                title: '💡 Thú vị!',
+                message: 'Câu hỏi hay quá phải không? Hãy dành 2-3 giây suy nghĩ trước khi trả lời — nhà tuyển dụng đánh giá cao sự cẩn thận.',
+            };
+        }
+        // Fallback for any unrecognized issue
+        if (emotionData.isPsychologicalIssue) {
+            return {
+                icon: 'warning',
+                color: 'text-red-400',
+                bg: 'bg-red-500/10 border border-red-500/30',
+                title: '⚠️ Chú ý',
+                message: 'Hãy hít thở sâu và giữ bình tĩnh nhé! Bạn đã chuẩn bị tốt rồi.',
+            };
+        }
+        return null;
     };
 
     return (
@@ -251,9 +408,13 @@ const InterviewPage = () => {
                     ) : (
                         <>
                             <div className="max-w-2xl text-center space-y-6 w-full">
-                                <div className="flex items-center justify-center gap-2 mb-4">
+                                <div className="flex items-center justify-center gap-3 mb-4">
                                     <div className="px-4 py-1.5 bg-slate-800 rounded-full text-sm font-medium text-slate-400">
                                         Câu hỏi {currentQuestionIndex + 1} / {questions.length}
+                                    </div>
+                                    <div className="px-4 py-1.5 bg-slate-800 rounded-full text-sm font-medium text-amber-400 flex items-center gap-1.5">
+                                        <span className="material-symbols-outlined text-[16px]">hourglass_top</span>
+                                        {formatTime(questionElapsedTime)}
                                     </div>
                                 </div>
                                 
@@ -279,9 +440,9 @@ const InterviewPage = () => {
                                 <div className="relative group">
                                     <textarea 
                                         value={userAnswer}
-                                        onChange={(e) => handleAnswerChange(e.target.value)}
-                                        placeholder="Nhập câu trả lời của bạn hoặc bấm Micro để nói..."
-                                        className="w-full h-40 bg-slate-800 border border-slate-600 rounded-xl p-4 pr-12 text-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
+                                        readOnly
+                                        placeholder="Vui lòng bấm Micro để nói câu trả lời của bạn..."
+                                        className="w-full h-40 bg-slate-800 border border-slate-600 rounded-xl p-4 pr-12 text-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all cursor-not-allowed"
                                     ></textarea>
                                     
                                     <div className="absolute bottom-4 right-4 flex gap-2">
@@ -299,7 +460,7 @@ const InterviewPage = () => {
                                 
                                 <div className="flex justify-between items-center mt-2">
                                     <p className="text-xs text-slate-500 italic">
-                                        {isListening ? "Đang nghe... (Nói tiếng Anh/Việt)" : "Tips: Bạn có thể nhập text hoặc dùng giọng nói."}
+                                        {isListening ? `Đang nghe... (${setupData?.language || 'English'})` : "Tips: Bấm micro để ghi âm câu trả lời."}
                                     </p>
                                     <button 
                                         onClick={() => saveCurrentAnswer(true)}
@@ -354,7 +515,7 @@ const InterviewPage = () => {
                                                 }));
 
                                                 if (sessionId) {
-                                                    const gradingResult = await aiService.gradeInterviewAnswers(qaToGrade);
+                                                    const gradingResult = await aiService.gradeInterviewAnswers(qaToGrade, emotionHistory);
                                                     await interviewService.completeSession(sessionId, gradingResult);
                                                 }
                                                 navigate(`/cv-history/${sessionId}`);
@@ -416,6 +577,67 @@ const InterviewPage = () => {
                                 </div>
                             </div>
                         )}
+
+                        {/* Time Summary */}
+                        <div className="mt-4 pt-4 border-t border-slate-600 space-y-2">
+                            <div className="flex justify-between items-center">
+                                <span className="text-slate-400 flex items-center gap-1">
+                                    <span className="material-symbols-outlined text-[16px]">timer</span>
+                                    Tổng thời gian:
+                                </span>
+                                <span className="font-mono font-bold text-purple-400">{formatTime(elapsedTime)}</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                                <span className="text-slate-400 flex items-center gap-1">
+                                    <span className="material-symbols-outlined text-[16px]">hourglass_top</span>
+                                    Câu hiện tại:
+                                </span>
+                                <span className="font-mono font-bold text-amber-400">{formatTime(questionElapsedTime)}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Camera Feed for Emotion AI */}
+                    <div className="bg-slate-700/50 rounded-xl p-4 mb-6">
+                        <h3 className="font-bold text-sm text-slate-300 flex items-center gap-2 mb-3">
+                            <span className="material-symbols-outlined text-green-400">psychology</span>
+                            AI Theo dõi Tâm lý
+                        </h3>
+                        <div className="relative rounded-lg overflow-hidden bg-black aspect-video flex items-center justify-center border border-slate-600">
+                            <video 
+                                ref={videoRef} 
+                                autoPlay 
+                                playsInline 
+                                muted 
+                                className={`w-full h-full object-cover ${!cameraActive ? 'hidden' : ''}`}
+                            ></video>
+                            <canvas ref={canvasRef} width={320} height={240} className="hidden" />
+                            {!cameraActive && (
+                                <div className="text-slate-500 text-xs flex flex-col items-center">
+                                    <span className="material-symbols-outlined mb-1">videocam_off</span>
+                                    Camera tắt
+                                </div>
+                            )}
+                            {emotion && cameraActive && (
+                                <div className="absolute top-2 right-2 bg-black/60 backdrop-blur text-white text-[10px] px-2 py-1 rounded border border-slate-500 flex items-center gap-1">
+                                    <span className={`w-2 h-2 rounded-full ${emotion.isPsychologicalIssue ? 'bg-red-500' : 'bg-green-500'} animate-pulse`}></span>
+                                    {emotion.emotion_vi}
+                                </div>
+                            )}
+                        </div>
+                        {emotion && (() => {
+                            const advice = getEmotionAdvice(emotion);
+                            if (!advice) return null;
+                            return (
+                                <div className={`mt-3 rounded-lg p-3 ${advice.bg}`}>
+                                    <p className={`text-xs font-bold ${advice.color} flex items-center gap-1.5 mb-1`}>
+                                        <span className={`material-symbols-outlined text-[14px]`}>{advice.icon}</span>
+                                        {advice.title}
+                                    </p>
+                                    <p className="text-xs text-slate-300 leading-relaxed">{advice.message}</p>
+                                </div>
+                            );
+                        })()}
                     </div>
 
                     <h3 className="font-bold text-lg mb-4 flex items-center gap-2">

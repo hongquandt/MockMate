@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { authService, interviewService } from '../services/api';
+import { authService, interviewService, paymentService } from '../services/api';
 import { uploadService } from '../services/uploadService';
 import logoImg from '../assets/img/z7430605225117_544001c3f21b8fc1cb5af11cb46703c0.jpg';
 
@@ -9,6 +9,8 @@ const UserProfilePage = () => {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
     const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+    const [paymentStatus, setPaymentStatus] = useState(null); // 'processing' | 'success' | 'error'
+    const [paymentError, setPaymentError] = useState('');
     const navigate = useNavigate();
     const location = useLocation();
 
@@ -23,13 +25,64 @@ const UserProfilePage = () => {
     useEffect(() => {
         loadUserProfile();
 
-        // Check if returning from payment
+        // Check if returning from PayOS payment
+        // PayOS returns: ?status=PAID&orderCode=xxx&code=00&cancel=false&id=xxx
         const params = new URLSearchParams(location.search);
         const status = params.get('status');
-        if (status === 'success') {
+        const orderCode = params.get('orderCode');
+        const code = params.get('code');
+        const cancel = params.get('cancel');
+        
+        // Detect PayOS return: status=PAID or code=00, with cancel=false
+        const isPaymentSuccess = orderCode && (
+            status === 'PAID' || 
+            status === 'success' || 
+            code === '00' || 
+            cancel === 'false'
+        );
+        const isPaymentCancelled = cancel === 'true' || status === 'CANCELLED' || status === 'cancelled';
+
+        if (isPaymentSuccess && !isPaymentCancelled) {
+            // Show processing state while we verify with backend
+            setPaymentStatus('processing');
             setShowSuccessMessage(true);
-            setTimeout(() => loadUserProfile(), 2000);
-            setTimeout(() => setShowSuccessMessage(false), 10000);
+            
+            // Call backend to verify & activate VIP (this works even on localhost)
+            paymentService.confirmPayment(orderCode)
+                .then(async (result) => {
+                    console.log('Payment confirmation result:', result);
+                    if (result.isVip) {
+                        setPaymentStatus('success');
+                        // Reload profile to show updated VIP status
+                        await loadUserProfile();
+                        // Also update localStorage user data
+                        const currentUser = authService.getCurrentUser();
+                        if (currentUser) {
+                            currentUser.isVip = true;
+                            localStorage.setItem('user', JSON.stringify(currentUser));
+                        }
+                    } else {
+                        setPaymentStatus('error');
+                        setPaymentError(result.message || 'Thanh toán chưa được xác nhận. Vui lòng thử lại sau.');
+                    }
+                })
+                .catch((err) => {
+                    console.error('Payment confirmation failed:', err);
+                    setPaymentStatus('error');
+                    setPaymentError(
+                        err.response?.data?.message || 
+                        'Không thể xác nhận thanh toán. Vui lòng liên hệ hỗ trợ.'
+                    );
+                })
+                .finally(() => {
+                    setTimeout(() => {
+                        setShowSuccessMessage(false);
+                        setPaymentStatus(null);
+                    }, 15000);
+                });
+            window.history.replaceState({}, '', '/profile');
+        } else if (isPaymentCancelled) {
+            alert('Thanh toán đã bị hủy.');
             window.history.replaceState({}, '', '/profile');
         }
     }, [location]);
@@ -101,7 +154,19 @@ const UserProfilePage = () => {
         );
     }
 
-    if (!user) return null;
+    if (!user) {
+        return (
+            <div className="flex flex-col h-screen items-center justify-center bg-slate-900 text-white">
+                <span className="material-symbols-outlined text-6xl text-red-500 mb-4">error</span>
+                <h2 className="text-2xl font-bold mb-2">Không thể tải thông tin profile</h2>
+                <p className="text-slate-400 mb-6">Đã xảy ra lỗi kết nối với máy chủ (API). Vui lòng kiểm tra lại đường truyền hoặc đăng nhập lại.</p>
+                <div className="flex gap-4">
+                    <button onClick={() => loadUserProfile()} className="px-6 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg shadow font-medium transition-colors">Thử lại</button>
+                    <button onClick={() => navigate('/login')} className="px-6 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg shadow font-medium transition-colors">Về trang đăng nhập</button>
+                </div>
+            </div>
+        );
+    }
 
     const isVipActive = user.isVip && user.vipExpirationDate && new Date(user.vipExpirationDate) > new Date();
 
@@ -153,9 +218,33 @@ const UserProfilePage = () => {
                 </div>
 
                 {showSuccessMessage && (
-                    <div className="bg-green-600 text-white px-6 py-3 shadow-lg flex justify-between items-center">
-                         <span>Thanh toán thành công! Tài khoản VIP của bạn đang được cập nhật.</span>
-                         <button onClick={() => setShowSuccessMessage(false)}><span className="material-symbols-outlined">close</span></button>
+                    <div className={`px-6 py-3 shadow-lg flex justify-between items-center ${
+                        paymentStatus === 'processing' ? 'bg-yellow-500 text-yellow-900' :
+                        paymentStatus === 'success' ? 'bg-green-600 text-white' :
+                        paymentStatus === 'error' ? 'bg-red-600 text-white' :
+                        'bg-green-600 text-white'
+                    }`}>
+                         <span className="flex items-center gap-2">
+                            {paymentStatus === 'processing' && (
+                                <>
+                                    <span className="material-symbols-outlined animate-spin text-sm">progress_activity</span>
+                                    Đang xác nhận thanh toán với PayOS... Vui lòng đợi.
+                                </>
+                            )}
+                            {paymentStatus === 'success' && (
+                                <>
+                                    <span className="material-symbols-outlined text-sm">check_circle</span>
+                                    Thanh toán thành công! Tài khoản VIP đã được kích hoạt.
+                                </>
+                            )}
+                            {paymentStatus === 'error' && (
+                                <>
+                                    <span className="material-symbols-outlined text-sm">error</span>
+                                    {paymentError || 'Không thể xác nhận thanh toán.'}
+                                </>
+                            )}
+                         </span>
+                         <button onClick={() => { setShowSuccessMessage(false); setPaymentStatus(null); }}><span className="material-symbols-outlined">close</span></button>
                     </div>
                 )}
 

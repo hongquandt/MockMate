@@ -110,6 +110,14 @@ export const authService = {
           localStorage.setItem('user', JSON.stringify(response.data.user));
       }
       return response.data;
+  },
+  
+  changePassword: async (oldPassword, newPassword) => {
+      const response = await api.post('/auth/change-password', {
+          oldPassword,
+          newPassword
+      });
+      return response.data;
   }
 };
 
@@ -120,6 +128,10 @@ export const paymentService = {
       planId,
       callbackUrl 
     });
+    return response.data;
+  },
+  confirmPayment: async (orderCode) => {
+    const response = await api.post('/payment/confirm-payment', { orderCode });
     return response.data;
   }
 };
@@ -140,6 +152,92 @@ export const interviewService = {
   },
   getSessionDetails: async (id) => {
     return (await api.get(`/interview/${id}`)).data;
+  }
+};
+
+export const adminService = {
+  getDashboardStats: async () => {
+    return (await api.get('/admin/dashboard')).data;
+  },
+  
+  // -- USER Management --
+  getAllUsers: async (role) => {
+    const params = role ? { role } : {};
+    return (await api.get('/admin/users', { params })).data;
+  },
+  toggleUserStatus: async (userId) => {
+    return (await api.post(`/admin/users/${userId}/toggle`)).data;
+  },
+  createUser: async (data) => {
+    return (await api.post('/admin/users', data)).data;
+  },
+  updateUser: async (id, data) => {
+    return (await api.put(`/admin/users/${id}`, data)).data;
+  },
+  deleteUser: async (id) => {
+    return (await api.delete(`/admin/users/${id}`)).data;
+  },
+
+  // -- JOB Management --
+  getAllJobs: async () => {
+    return (await api.get('/admin/jobs')).data;
+  },
+  toggleJobStatus: async (jobId) => {
+    return (await api.post(`/admin/jobs/${jobId}/toggle`)).data;
+  },
+  approveJob: async (jobId, status) => {
+    return (await api.post(`/admin/jobs/${jobId}/approve?status=${status}`)).data;
+  },
+  createJob: async (data) => {
+    return (await api.post('/admin/jobs', data)).data;
+  },
+  updateJob: async (id, data) => {
+    return (await api.put(`/admin/jobs/${id}`, data)).data;
+  },
+  deleteJob: async (id) => {
+    return (await api.delete(`/admin/jobs/${id}`)).data;
+  },
+  getJobCategories: async () => {
+    return (await api.get('/admin/jobs/categories')).data;
+  },
+
+  // -- REVENUE --
+  getRevenueStats: async () => {
+    return (await api.get('/admin/revenue/stats')).data;
+  },
+  getRecentTransactions: async (count = 10) => {
+    return (await api.get(`/admin/revenue/transactions?count=${count}`)).data;
+  }
+};
+
+export const companyService = {
+  getDashboardStats: async () => {
+    return (await api.get('/company/dashboard')).data;
+  },
+  getMyJobs: async () => {
+    return (await api.get('/company/jobs')).data;
+  },
+  createJob: async (data) => {
+    return (await api.post('/company/jobs', data)).data;
+  },
+  updateJob: async (id, data) => {
+    return (await api.put(`/company/jobs/${id}`, data)).data;
+  },
+  deleteJob: async (id) => {
+    return (await api.delete(`/company/jobs/${id}`)).data;
+  },
+  toggleJobStatus: async (id) => {
+    return (await api.post(`/company/jobs/${id}/toggle`)).data;
+  },
+  getCandidates: async (jobId) => {
+    const params = jobId ? { jobId } : {};
+    return (await api.get('/company/candidates', { params })).data;
+  },
+  getCandidateResult: async (sessionId) => {
+    return (await api.get(`/company/candidates/${sessionId}`)).data;
+  },
+  getJobCategories: async () => {
+    return (await api.get('/company/job-categories')).data;
   }
 };
 

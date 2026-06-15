@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace InterviewSimulator.Models;
@@ -17,7 +17,13 @@ public partial class JobPosition
 
     public bool? IsActive { get; set; }
 
+    public int? CompanyId { get; set; }
+
+    public int Status { get; set; } = 0; // 0: Pending, 1: Approved, 2: Rejected
+
     public virtual JobCategory Category { get; set; } = null!;
+
+    public virtual User? Company { get; set; }
 
     public virtual ICollection<InterviewSession> InterviewSessions { get; set; } = new List<InterviewSession>();
 }

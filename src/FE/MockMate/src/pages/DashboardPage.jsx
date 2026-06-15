@@ -129,6 +129,10 @@ const DashboardPage = () => {
                 <span className="material-symbols-outlined">person</span>
                 Profile
             </Link>
+            <Link to="/emotion-test" className="flex items-center gap-3 px-4 py-3 text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-xl font-medium transition-colors">
+                <span className="material-symbols-outlined">psychology</span>
+                Test Tâm Lý (AI)
+            </Link>
              <Link to="/" className="flex items-center gap-3 px-4 py-3 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 rounded-xl font-medium transition-colors">
                 <span className="material-symbols-outlined">home</span>
                 Trang chủ

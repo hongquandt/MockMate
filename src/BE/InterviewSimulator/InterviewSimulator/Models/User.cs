@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace InterviewSimulator.Models;
@@ -40,4 +40,6 @@ public partial class User
     public virtual ICollection<PaymentTransaction> PaymentTransactions { get; set; } = new List<PaymentTransaction>();
 
     public virtual Role Role { get; set; } = null!;
+
+    public virtual ICollection<JobPosition> JobPositions { get; set; } = new List<JobPosition>();
 }

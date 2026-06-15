@@ -173,6 +173,46 @@ namespace InterviewSimulator.Controllers
                 return BadRequest(new { message = ex.Message });
             }
         }
+
+        [HttpPost("change-password")]
+        [Authorize]
+        public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request)
+        {
+            try
+            {
+                var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userIdStr)) return Unauthorized();
+
+                var userId = int.Parse(userIdStr);
+                var user = await _context.Users.FindAsync(userId);
+                if (user == null) return NotFound(new { message = "User not found" });
+
+                // Since we need to verify current password, and AuthService does it by computing hash..
+                // I will directly compute hash here to keep it simple, or inject it.
+                // Reusing simple hash logic from AuthService to check.
+                using (var sha256 = System.Security.Cryptography.SHA256.Create())
+                {
+                    var hashedBytes = sha256.ComputeHash(System.Text.Encoding.UTF8.GetBytes(request.OldPassword));
+                    var oldHash = Convert.ToBase64String(hashedBytes);
+                    if (oldHash != user.PasswordHash)
+                    {
+                        return BadRequest(new { message = "Mật khẩu cũ không đúng." });
+                    }
+
+                    // Hash new password
+                    var newHashedBytes = sha256.ComputeHash(System.Text.Encoding.UTF8.GetBytes(request.NewPassword));
+                    user.PasswordHash = Convert.ToBase64String(newHashedBytes);
+                }
+
+                await _context.SaveChangesAsync();
+
+                return Ok(new { message = "Đổi mật khẩu thành công!" });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
     }
 
     public class UpdateProfileRequest
@@ -180,5 +220,11 @@ namespace InterviewSimulator.Controllers
         public string? FullName { get; set; }
         public string? PhoneNumber { get; set; }
         public string? AvatarUrl { get; set; }
+    }
+
+    public class ChangePasswordRequest
+    {
+        public string OldPassword { get; set; } = null!;
+        public string NewPassword { get; set; } = null!;
     }
 }
