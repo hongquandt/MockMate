@@ -276,29 +276,48 @@ const InterviewPage = () => {
         
         const data = await response.json();
         if (data.error === 0 && data.async) {
-          // File audio của FPT có thể mất 1-2s để render, tạo hàm check và phát
           const audioUrl = data.async;
           
-          if (audioRef.current) {
-             audioRef.current.pause();
-          }
-
-          const audio = new Audio(audioUrl);
-          audioRef.current = audio;
-
-          audio.onended = () => setIsSpeaking(false);
-          audio.onerror = () => {
-             console.error("FPT Audio Playback Error, falling back to browser TTS");
-             fallbackBrowserTTS(text, voiceLang);
-          };
+          // Polling function: Check if audio is ready on FPT CDN
+          let attempts = 0;
+          const maxAttempts = 10; // Đợi tối đa 10 giây
           
-          // Đợi xíu để link âm thanh được gen ra trên server FPT rồi mới play
-          setTimeout(() => {
-             audio.play().catch(e => {
-                console.error("Audio autoplay blocked or error:", e);
+          const checkAndPlay = async () => {
+             try {
+                const res = await fetch(audioUrl, { method: 'HEAD' });
+                if (res.ok) { // Status 200: File đã sẵn sàng
+                   if (audioRef.current) {
+                      audioRef.current.pause();
+                   }
+                   const audio = new Audio(audioUrl);
+                   audioRef.current = audio;
+                   audio.onended = () => setIsSpeaking(false);
+                   audio.onerror = () => {
+                      fallbackBrowserTTS(text, voiceLang);
+                   };
+                   audio.play().catch(e => {
+                      console.error("Audio autoplay blocked:", e);
+                      fallbackBrowserTTS(text, voiceLang);
+                   });
+                   return true;
+                }
+             } catch (e) {
+                // Ignore network errors during polling
+             }
+             return false;
+          };
+
+          const pollTimer = setInterval(async () => {
+             attempts++;
+             const isReady = await checkAndPlay();
+             if (isReady) {
+                clearInterval(pollTimer);
+             } else if (attempts >= maxAttempts) {
+                clearInterval(pollTimer);
+                console.warn("FPT Audio Timeout, falling back to browser TTS");
                 fallbackBrowserTTS(text, voiceLang);
-             });
-          }, 1500);
+             }
+          }, 1000); // Kiểm tra mỗi 1 giây
 
           return; // Kết thúc tại đây nếu gọi FPT thành công
         }
