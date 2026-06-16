@@ -306,6 +306,11 @@ const DashboardPage = () => {
                                             <span className="material-symbols-outlined text-xl">auto_awesome</span>
                                         </div>
                                         <h2 className="text-xl font-bold text-slate-900 dark:text-white">Kết quả phân tích</h2>
+                                        {analysis.industry && (
+                                            <div className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-bold hidden sm:block">
+                                                {analysis.industry}
+                                            </div>
+                                        )}
                                         <div className="ml-auto px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-bold">
                                             {analysis.matchScore}/100
                                         </div>

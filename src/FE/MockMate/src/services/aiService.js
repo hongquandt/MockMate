@@ -126,6 +126,7 @@ export const aiService = {
 
         OUTPUT JSON FORMAT:
         {
+            "industry": "Tên ngành nghề dự đoán (ví dụ: Marketing, IT, Finance, HR...)",
             "matchScore": number (0-100),
             "skills": ["kỹ năng 1", "kỹ năng 2"],
             "strengths": ["Điểm mạnh 1", "Điểm mạnh 2"],
