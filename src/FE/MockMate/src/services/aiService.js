@@ -90,32 +90,39 @@ async function callWithRetryAndFallback(prompt) {
 export const aiService = {
   analyzeCv: async (cvText) => {
     const prompt = `
-        ROLE: You are an expert HR and Recruitment Specialist. Your goal is to provide an objective, balanced evaluation of the candidate's CV, validating their readiness for their chosen industry while being fair.
+        ROLE: You are an expert HR and Recruitment Specialist across multiple industries (Marketing, Finance, IT, Healthcare, Business, etc.).
+        Your goal is to provide an objective, balanced evaluation of the candidate's CV.
 
-        INDUSTRY AGNOSTIC CV CONTENT:
+        CRITICAL INSTRUCTION: 
+        1. FIRST, carefully read the CV and determine the specific industry and field the candidate is applying for or has experience in (e.g., Marketing, Sales, IT, Graphic Design, etc.). 
+        2. DO NOT assume the candidate is in IT/Software Engineering unless the CV explicitly contains IT-specific skills (like programming languages, frameworks, cloud, etc.). If the CV is about Marketing, evaluate them STRICTLY on Marketing skills, campaigns, content creation, SEO, event management, etc.
+        3. Validate their readiness for THEIR actual chosen industry based on the extracted content.
+
+        CV CONTENT:
         """
-        \${cvText}
+        ${cvText}
         """
 
         SCORING RUBRIC (Professional & Objective):
-        1. Impact & Results (Weight: 30%): Look for tangible results, measurable achievements, or clear demonstrations of executing their duties.
-           - High score: Quantifiable impact or complex problem solving in their field.
+        1. Impact & Results (Weight: 30%): Look for tangible results, measurable achievements, or clear demonstrations of executing their duties in THEIR industry.
+           - High score: Quantifiable impact or complex problem solving.
            - Medium score: Clear responsibilities and successful completion of tasks.
            - Low score: Vague descriptions without clear outcomes.
-        2. Professional Skills (Weight: 30%): Assess the depth, relevance, and proficiency of skills mentioned, including hard and soft skills applicable to their industry.
+        2. Professional Skills (Weight: 30%): Assess the depth, relevance, and proficiency of skills mentioned, including hard and soft skills applicable strictly to THEIR industry.
         3. Experience Quality (Weight: 20%): Logical progression, relevant projects, or work history.
         4. Structure & Clarity (Weight: 20%): Professional formatting, grammar, and clarity.
 
         TASK:
-        Analyze the CV and provide a structured JSON output.
+        Analyze the CV based on the detected industry and provide a structured JSON output.
         
         IMPORTANT: 
         - The candidate's CV might be in English or Vietnamese. You must read and evaluate it regardless of its language.
         - Be objective. Do not be overly harsh, but do not give high scores for free.
         - A solid, employable CV should typically score between 70-80. Outstanding ones can go higher (85+).
-        - Highlight specific gaps that, if fixed, would genuinely improve their employability.
-        - Generate 3-5 relevant interview questions based on their domain, skills, and gaps.
+        - Highlight specific gaps that, if fixed, would genuinely improve their employability in THEIR SPECIFIC FIELD.
+        - Generate 3-5 relevant interview questions based on their actual domain, skills, and gaps.
         - Regardless of the CV's original language, ALL text values in the JSON output MUST be written entirely in Vietnamese (Tiếng Việt), including summary, strengths, weaknesses, and interview questions.
+        - In the "summary", mention the detected industry (e.g. "Ứng viên có nền tảng tốt trong lĩnh vực Marketing...").
 
         OUTPUT JSON FORMAT:
         {
@@ -123,9 +130,9 @@ export const aiService = {
             "skills": ["kỹ năng 1", "kỹ năng 2"],
             "strengths": ["Điểm mạnh 1", "Điểm mạnh 2"],
             "weaknesses": ["Điểm cần cải thiện 1", "Điểm cần cải thiện 2"],
-            "summary": "Đánh giá tổng quan về trình độ ứng viên (bằng tiếng Việt).",
+            "summary": "Đánh giá tổng quan về trình độ ứng viên dựa trên đúng ngành nghề của họ (bằng tiếng Việt).",
             "interviewQuestions": [
-                "Câu hỏi 1",
+                "Câu hỏi 1 (đúng chuyên ngành của ứng viên)",
                 "Câu hỏi 2",
                 "Câu hỏi 3"
             ]
