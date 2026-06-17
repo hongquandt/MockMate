@@ -268,7 +268,6 @@ const InterviewPage = () => {
           method: "POST",
           headers: {
             "api-key": fptApiKey,
-            "speed": "",
             "voice": "banmai" // Có thể đổi thành thuminh, minhquang, ...
           },
           body: text
@@ -320,6 +319,8 @@ const InterviewPage = () => {
           }, 1000); // Kiểm tra mỗi 1 giây
 
           return; // Kết thúc tại đây nếu gọi FPT thành công
+        } else {
+          console.warn("FPT API returned error:", data.message);
         }
       } catch (err) {
         console.error("FPT API Error:", err);
@@ -340,6 +341,10 @@ const InterviewPage = () => {
         const bestVoice = getBestVoice(voiceLang);
         if (bestVoice) {
           utterance.voice = bestVoice;
+        } else if (voiceLang === "Vietnamese") {
+           // Fallback to finding any voice that has "vi" in it
+           const fallbackVi = window.speechSynthesis.getVoices().find(v => v.lang.includes("vi"));
+           if (fallbackVi) utterance.voice = fallbackVi;
         }
         utterance.rate = voiceLang === "Vietnamese" ? 0.85 : 1.0;
         utterance.pitch = 1.0;
@@ -348,8 +353,13 @@ const InterviewPage = () => {
         utterance.onerror = () => setIsSpeaking(false);
         window.speechSynthesis.speak(utterance);
       };
+      
       if (window.speechSynthesis.getVoices().length === 0) {
-        window.speechSynthesis.onvoiceschanged = () => doSpeak();
+        const onVoices = () => {
+          window.speechSynthesis.removeEventListener('voiceschanged', onVoices);
+          doSpeak();
+        };
+        window.speechSynthesis.addEventListener('voiceschanged', onVoices);
       } else {
         doSpeak();
       }
