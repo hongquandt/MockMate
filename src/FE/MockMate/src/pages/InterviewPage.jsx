@@ -256,6 +256,13 @@ const InterviewPage = () => {
   const audioRef = useRef(null); // Ref to store the current playing Audio object
 
   const speakText = async (text) => {
+    // "Unlock" audio context IMMEDIATELY upon button click to bypass browser Autoplay policy
+    if (!audioRef.current) {
+        audioRef.current = new Audio();
+    }
+    audioRef.current.src = "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA"; // silent empty wav
+    audioRef.current.play().catch(() => {});
+
     const voiceLang = setupData?.voiceLanguage || "Vietnamese";
 
     // 1. Nếu là Tiếng Việt và có FPT API Key -> Dùng API FPT.AI
@@ -285,16 +292,12 @@ const InterviewPage = () => {
              try {
                 const res = await fetch(audioUrl, { method: 'HEAD' });
                 if (res.ok) { // Status 200: File đã sẵn sàng
-                   if (audioRef.current) {
-                      audioRef.current.pause();
-                   }
-                   const audio = new Audio(audioUrl);
-                   audioRef.current = audio;
-                   audio.onended = () => setIsSpeaking(false);
-                   audio.onerror = () => {
+                   audioRef.current.src = audioUrl;
+                   audioRef.current.onended = () => setIsSpeaking(false);
+                   audioRef.current.onerror = () => {
                       fallbackBrowserTTS(text, voiceLang);
                    };
-                   audio.play().catch(e => {
+                   audioRef.current.play().catch(e => {
                       console.error("Audio autoplay blocked:", e);
                       fallbackBrowserTTS(text, voiceLang);
                    });
