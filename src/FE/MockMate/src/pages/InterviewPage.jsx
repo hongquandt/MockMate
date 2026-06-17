@@ -265,69 +265,25 @@ const InterviewPage = () => {
 
     const voiceLang = setupData?.voiceLanguage || "Vietnamese";
 
-    // 1. Nếu là Tiếng Việt và có FPT API Key -> Dùng API FPT.AI
-    const fptApiKey = import.meta.env.VITE_FPT_TTS_API_KEY;
-    
-    if (voiceLang === "Vietnamese" && fptApiKey) {
+    // 1. Dùng Google Translate TTS (Miễn phí, không cần cấu hình API Key)
+    if (voiceLang === "Vietnamese") {
       try {
         setIsSpeaking(true);
-        const response = await fetch("https://api.fpt.ai/hmi/tts/v5", {
-          method: "POST",
-          headers: {
-            "api-key": fptApiKey,
-            "voice": "banmai" // Có thể đổi thành thuminh, minhquang, ...
-          },
-          body: text
-        });
+        const encodedText = encodeURIComponent(text);
+        const audioUrl = `https://translate.google.com/translate_tts?ie=UTF-8&tl=vi&client=tw-ob&q=${encodedText}`;
         
-        const data = await response.json();
-        if (data.error === 0 && data.async) {
-          const audioUrl = data.async;
-          
-          // Polling function: Check if audio is ready on FPT CDN
-          let attempts = 0;
-          const maxAttempts = 10; // Đợi tối đa 10 giây
-          
-          const checkAndPlay = async () => {
-             try {
-                const res = await fetch(audioUrl, { method: 'HEAD' });
-                if (res.ok) { // Status 200: File đã sẵn sàng
-                   audioRef.current.src = audioUrl;
-                   audioRef.current.onended = () => setIsSpeaking(false);
-                   audioRef.current.onerror = () => {
-                      fallbackBrowserTTS(text, voiceLang);
-                   };
-                   audioRef.current.play().catch(e => {
-                      console.error("Audio autoplay blocked:", e);
-                      fallbackBrowserTTS(text, voiceLang);
-                   });
-                   return true;
-                }
-             } catch (e) {
-                // Ignore network errors during polling
-             }
-             return false;
-          };
-
-          const pollTimer = setInterval(async () => {
-             attempts++;
-             const isReady = await checkAndPlay();
-             if (isReady) {
-                clearInterval(pollTimer);
-             } else if (attempts >= maxAttempts) {
-                clearInterval(pollTimer);
-                console.warn("FPT Audio Timeout, falling back to browser TTS");
-                fallbackBrowserTTS(text, voiceLang);
-             }
-          }, 1000); // Kiểm tra mỗi 1 giây
-
-          return; // Kết thúc tại đây nếu gọi FPT thành công
-        } else {
-          console.warn("FPT API returned error:", data.message);
-        }
+        audioRef.current.src = audioUrl;
+        audioRef.current.onended = () => setIsSpeaking(false);
+        audioRef.current.onerror = () => {
+           console.warn("Google TTS Error, falling back to browser TTS");
+           fallbackBrowserTTS(text, voiceLang);
+        };
+        
+        await audioRef.current.play();
+        return; // Kết thúc tại đây nếu Google TTS thành công
       } catch (err) {
-        console.error("FPT API Error:", err);
-        // Lỗi gọi API thì rớt xuống dùng giọng trình duyệt
+        console.error("Google TTS Error:", err);
+        // Rớt xuống dùng giọng trình duyệt
       }
     }
 
