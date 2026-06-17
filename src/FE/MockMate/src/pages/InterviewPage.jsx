@@ -265,24 +265,49 @@ const InterviewPage = () => {
 
     const voiceLang = setupData?.voiceLanguage || "Vietnamese";
 
-    // 1. Dùng Google Translate TTS (Miễn phí, không cần cấu hình API Key)
-    if (voiceLang === "Vietnamese") {
+    // 1. Dùng ElevenLabs API (Giọng AI siêu thực)
+    const elevenLabsApiKey = import.meta.env.VITE_ELEVENLABS_API_KEY;
+    
+    if (elevenLabsApiKey && elevenLabsApiKey !== "your_key_here") {
       try {
         setIsSpeaking(true);
-        const encodedText = encodeURIComponent(text);
-        const audioUrl = `https://translate.google.com/translate_tts?ie=UTF-8&tl=vi&client=tw-ob&q=${encodedText}`;
-        
+        // Thay voiceId bằng ID giọng bạn thích. 
+        // Lấy Voice ID tại: https://elevenlabs.io/app/voice-library
+        const voiceId = "pNInz6obpgDQGcFmaJcg"; // Giọng Adam
+        const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "xi-api-key": elevenLabsApiKey
+          },
+          body: JSON.stringify({
+            text: text,
+            model_id: "eleven_multilingual_v2", // Bắt buộc dùng v2 để hỗ trợ Tiếng Việt
+            voice_settings: {
+              stability: 0.5,
+              similarity_boost: 0.7
+            }
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error("ElevenLabs API error: " + response.statusText);
+        }
+
+        const audioBlob = await response.blob();
+        const audioUrl = URL.createObjectURL(audioBlob);
+
         audioRef.current.src = audioUrl;
         audioRef.current.onended = () => setIsSpeaking(false);
         audioRef.current.onerror = () => {
-           console.warn("Google TTS Error, falling back to browser TTS");
+           console.warn("ElevenLabs TTS playback error, falling back to browser TTS");
            fallbackBrowserTTS(text, voiceLang);
         };
         
         await audioRef.current.play();
-        return; // Kết thúc tại đây nếu Google TTS thành công
+        return; // Kết thúc tại đây nếu thành công
       } catch (err) {
-        console.error("Google TTS Error:", err);
+        console.error("ElevenLabs API Error:", err);
         // Rớt xuống dùng giọng trình duyệt
       }
     }
