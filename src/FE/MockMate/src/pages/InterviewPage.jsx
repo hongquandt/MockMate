@@ -265,54 +265,66 @@ const InterviewPage = () => {
 
     const voiceLang = setupData?.voiceLanguage || "Vietnamese";
 
-    // 1. Dùng ElevenLabs API (Giọng AI siêu thực)
-    const elevenLabsApiKey = import.meta.env.VITE_ELEVENLABS_API_KEY;
+    // 1. Dùng FPT AI (Giọng Ban Mai rất hay và API Key của bạn đang hoạt động tốt)
+    const fptApiKey = import.meta.env.VITE_FPT_TTS_API_KEY;
     
-    if (elevenLabsApiKey && elevenLabsApiKey !== "your_key_here") {
+    if (voiceLang === "Vietnamese" && fptApiKey) {
       try {
         setIsSpeaking(true);
-        // Thay voiceId bằng ID giọng bạn thích. 
-        // Lấy Voice ID tại: https://elevenlabs.io/app/voice-library
-        const voiceId = "pNInz6obpgDQGcFmaJcg"; // Giọng Adam
-        const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
+        const response = await fetch("https://api.fpt.ai/hmi/tts/v5", {
           method: "POST",
           headers: {
-            "Content-Type": "application/json",
-            "xi-api-key": elevenLabsApiKey
+            "api-key": fptApiKey,
+            "voice": "banmai"
           },
-          body: JSON.stringify({
-            text: text,
-            model_id: "eleven_multilingual_v2", // Bắt buộc dùng v2 để hỗ trợ Tiếng Việt
-            voice_settings: {
-              stability: 0.5,
-              similarity_boost: 0.7
-            }
-          })
+          body: text
         });
-
-        if (!response.ok) {
-          throw new Error("ElevenLabs API error: " + response.statusText);
-        }
-
-        const audioBlob = await response.blob();
-        const audioUrl = URL.createObjectURL(audioBlob);
-
-        audioRef.current.src = audioUrl;
-        audioRef.current.onended = () => setIsSpeaking(false);
-        audioRef.current.onerror = () => {
-           console.warn("ElevenLabs TTS playback error, falling back to browser TTS");
-           fallbackBrowserTTS(text, voiceLang);
-        };
         
-        await audioRef.current.play();
-        return; // Kết thúc tại đây nếu thành công
+        const data = await response.json();
+        if (data.error === 0 && data.async) {
+          const audioUrl = data.async;
+          
+          let attempts = 0;
+          const maxAttempts = 10;
+          
+          const checkAndPlay = async () => {
+             try {
+                const res = await fetch(audioUrl, { method: 'HEAD' });
+                if (res.ok) { // Status 200: File đã sẵn sàng
+                   audioRef.current.src = audioUrl;
+                   audioRef.current.onended = () => setIsSpeaking(false);
+                   audioRef.current.onerror = () => {
+                      fallbackBrowserTTS(text, voiceLang);
+                   };
+                   audioRef.current.play().catch(e => {
+                      console.error("Audio autoplay blocked:", e);
+                      fallbackBrowserTTS(text, voiceLang);
+                   });
+                   return true;
+                }
+             } catch (e) {
+                // Ignore network errors
+             }
+             return false;
+          };
+
+          const pollTimer = setInterval(async () => {
+             attempts++;
+             const isReady = await checkAndPlay();
+             if (isReady) {
+                clearInterval(pollTimer);
+             } else if (attempts >= maxAttempts) {
+                clearInterval(pollTimer);
+                console.warn("FPT Audio Timeout, falling back");
+                fallbackBrowserTTS(text, voiceLang);
+             }
+          }, 1000);
+
+          return; // Kết thúc tại đây nếu gọi FPT thành công
+        }
       } catch (err) {
-        console.error("ElevenLabs API Error:", err);
-        alert("Lỗi ElevenLabs: " + err.message + "\n(Vui lòng chụp màn hình lỗi này gửi cho mình)");
-        // Rớt xuống dùng giọng trình duyệt
+        console.error("FPT API Error:", err);
       }
-    } else {
-      alert("Lỗi: Không tìm thấy API Key của ElevenLabs. Đang dùng giọng mặc định.");
     }
 
     // 2. Dự phòng (Fallback): Dùng giọng trình duyệt mặc định
