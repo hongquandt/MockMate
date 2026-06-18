@@ -253,131 +253,6 @@ const InterviewPage = () => {
     return matchingVoices[0];
   };
 
-  const audioRef = useRef(null); // Ref to store the current playing Audio object
-
-  const speakText = async (text) => {
-    // "Unlock" audio context IMMEDIATELY upon button click to bypass browser Autoplay policy
-    if (!audioRef.current) {
-        audioRef.current = new Audio();
-    }
-    audioRef.current.src = "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA"; // silent empty wav
-    audioRef.current.play().catch(() => {});
-
-    const voiceLang = setupData?.voiceLanguage || "Vietnamese";
-
-    const elevenLabsKey = import.meta.env.VITE_ELEVENLABS_API_KEY;
-    const fptApiKey = import.meta.env.VITE_FPT_TTS_API_KEY;
-
-    // 1. ƯU TIÊN SỐ 1: ElevenLabs (Hỗ trợ cả Tiếng Anh và Tiếng Việt qua eleven_multilingual_v2)
-    if (elevenLabsKey && elevenLabsKey !== "your_key_here") {
-      try {
-        setIsSpeaking(true);
-        // Bước 1: Lấy danh sách voices từ tài khoản
-        const voicesRes = await fetch("https://api.elevenlabs.io/v1/voices", {
-          headers: { "xi-api-key": elevenLabsKey }
-        });
-        
-        if (voicesRes.ok) {
-          const voicesData = await voicesRes.json();
-          const voices = voicesData.voices || [];
-          
-          if (voices.length > 0) {
-            // Ưu tiên các giọng hay hoặc lấy giọng đầu tiên có sẵn
-            const preferredNames = ["Rachel", "Josh", "Adam", "Bella", "Antoni", "Elli", "Sam"];
-            let selectedVoice = voices.find(v => preferredNames.some(name => v.name.includes(name))) || voices[0];
-            
-            // Bước 2: Gọi TTS với voice ID tìm được
-            const ttsRes = await fetch(
-              `https://api.elevenlabs.io/v1/text-to-speech/${selectedVoice.voice_id}`,
-              {
-                method: "POST",
-                headers: {
-                  "xi-api-key": elevenLabsKey,
-                  "Content-Type": "application/json"
-                },
-                body: JSON.stringify({
-                  text: text,
-                  model_id: "eleven_multilingual_v2", // Model này hỗ trợ tốt tiếng Việt
-                  voice_settings: { stability: 0.5, similarity_boost: 0.75 }
-                })
-              }
-            );
-
-            if (ttsRes.ok) {
-              const audioBlob = await ttsRes.blob();
-              const blobUrl = URL.createObjectURL(audioBlob);
-              audioRef.current.src = blobUrl;
-              audioRef.current.onended = () => { setIsSpeaking(false); URL.revokeObjectURL(blobUrl); };
-              audioRef.current.onerror = () => { setIsSpeaking(false); fallbackBrowserTTS(text, voiceLang); };
-              audioRef.current.play().catch(() => fallbackBrowserTTS(text, voiceLang));
-              return; // Thành công! Dừng tại đây.
-            } else {
-              console.error("ElevenLabs TTS failed:", await ttsRes.text());
-            }
-          }
-        }
-      } catch (err) {
-        console.error("ElevenLabs Error:", err);
-      }
-    }
-
-    // 2. DỰ PHÒNG 1: FPT AI (Chỉ áp dụng nếu ElevenLabs lỗi VÀ đang chọn Tiếng Việt)
-    if (voiceLang === "Vietnamese" && fptApiKey) {
-      try {
-        setIsSpeaking(true);
-        const response = await fetch("https://api.fpt.ai/hmi/tts/v5", {
-          method: "POST",
-          headers: {
-            "api-key": fptApiKey,
-            "voice": "banmai",
-            "speed": "",
-            "prose": ""
-          },
-          body: text
-        });
-        
-        const data = await response.json();
-        if (data.error === 0 && data.async) {
-          const audioUrl = data.async;
-          
-          await new Promise(resolve => setTimeout(resolve, 3000));
-
-          const tryPlayAudio = (url, attempt, maxRetries) => {
-            audioRef.current.src = url;
-            
-            audioRef.current.oncanplaythrough = () => {
-              audioRef.current.oncanplaythrough = null;
-              audioRef.current.onended = () => setIsSpeaking(false);
-              audioRef.current.play().catch(() => {
-                fallbackBrowserTTS(text, voiceLang);
-              });
-            };
-
-            audioRef.current.onerror = () => {
-              if (attempt < maxRetries) {
-                setTimeout(() => tryPlayAudio(url, attempt + 1, maxRetries), 2000);
-              } else {
-                console.warn("FPT Audio Timeout, dùng fallback");
-                fallbackBrowserTTS(text, voiceLang);
-              }
-            };
-
-            audioRef.current.load();
-          };
-
-          tryPlayAudio(audioUrl, 1, 10);
-          return; 
-        }
-      } catch (err) {
-        console.error("FPT API Error:", err);
-        setIsSpeaking(false);
-      }
-    }
-
-    // 3. DỰ PHÒNG 2: Giọng trình duyệt mặc định
-    fallbackBrowserTTS(text, voiceLang);
-  };
-
   const fallbackBrowserTTS = (text, voiceLang) => {
     if ("speechSynthesis" in window) {
       window.speechSynthesis.cancel();
@@ -388,7 +263,6 @@ const InterviewPage = () => {
         if (bestVoice) {
           utterance.voice = bestVoice;
         } else if (voiceLang === "Vietnamese") {
-           // Fallback to finding any voice that has "vi" in it
            const fallbackVi = window.speechSynthesis.getVoices().find(v => v.lang.includes("vi"));
            if (fallbackVi) utterance.voice = fallbackVi;
         }
@@ -411,6 +285,84 @@ const InterviewPage = () => {
       }
     } else {
       alert("Trình duyệt của bạn không hỗ trợ đọc giọng nói.");
+    }
+  };
+
+  const audioRef = useRef(null); // Ref to store the current playing Audio object
+
+  const speakText = async (text) => {
+    // "Unlock" audio context IMMEDIATELY upon button click to bypass browser Autoplay policy
+    if (!audioRef.current) {
+        audioRef.current = new Audio();
+    }
+    audioRef.current.src = "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA"; // silent empty wav
+    audioRef.current.play().catch(() => {});
+
+    const voiceLang = setupData?.voiceLanguage || "Vietnamese";
+    const fptApiKey = import.meta.env.VITE_FPT_TTS_API_KEY;
+
+    // 1. DÀNH CHO TIẾNG ANH -> Lấy giọng Google (trình duyệt) đọc là được
+    if (voiceLang === "English") {
+      fallbackBrowserTTS(text, voiceLang);
+      return; 
+    }
+
+    // 2. DÀNH CHO TIẾNG VIỆT -> Chỉ dùng FPT AI (Tuyệt đối KHÔNG dùng giọng Google)
+    if (voiceLang === "Vietnamese") {
+      if (fptApiKey) {
+        try {
+          setIsSpeaking(true);
+          const response = await fetch("https://api.fpt.ai/hmi/tts/v5", {
+            method: "POST",
+            headers: {
+              "api-key": fptApiKey,
+              "voice": "banmai",
+              "speed": "",
+              "prose": ""
+            },
+            body: text
+          });
+          
+          const data = await response.json();
+          if (data.error === 0 && data.async) {
+            const audioUrl = data.async;
+            
+            await new Promise(resolve => setTimeout(resolve, 3000));
+
+            const tryPlayAudio = (url, attempt, maxRetries) => {
+              audioRef.current.src = url;
+              
+              audioRef.current.oncanplaythrough = () => {
+                audioRef.current.oncanplaythrough = null;
+                audioRef.current.onended = () => setIsSpeaking(false);
+                audioRef.current.play().catch(() => {
+                  setIsSpeaking(false);
+                });
+              };
+
+              audioRef.current.onerror = () => {
+                if (attempt < maxRetries) {
+                  setTimeout(() => tryPlayAudio(url, attempt + 1, maxRetries), 2000);
+                } else {
+                  console.warn("FPT Audio Timeout");
+                  setIsSpeaking(false);
+                }
+              };
+
+              audioRef.current.load();
+            };
+
+            tryPlayAudio(audioUrl, 1, 10);
+            return; 
+          }
+        } catch (err) {
+          console.error("FPT API Error:", err);
+        }
+      } else {
+        console.warn("FPT API Key is missing for Vietnamese voice.");
+      }
+      setIsSpeaking(false);
+      return;
     }
   };
 
