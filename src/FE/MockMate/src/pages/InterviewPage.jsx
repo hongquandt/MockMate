@@ -316,9 +316,7 @@ const InterviewPage = () => {
             method: "POST",
             headers: {
               "api-key": fptApiKey,
-              "voice": "banmai",
-              "speed": "",
-              "prose": ""
+              "voice": "banmai"
             },
             body: text
           });
@@ -327,24 +325,27 @@ const InterviewPage = () => {
           if (data.error === 0 && data.async) {
             const audioUrl = data.async;
             
-            await new Promise(resolve => setTimeout(resolve, 3000));
-
-            const tryPlayAudio = (url, attempt, maxRetries) => {
-              audioRef.current.src = url;
+            // FPT cần thời gian render. Ta dùng Audio tải lại liên tục với cache-bust để lấy file sớm nhất
+            const tryPlayAudio = (baseUrl, attempt, maxRetries) => {
+              const urlWithCacheBust = `${baseUrl}?t=${new Date().getTime()}`;
+              audioRef.current.src = urlWithCacheBust;
               
-              audioRef.current.oncanplaythrough = () => {
-                audioRef.current.oncanplaythrough = null;
+              audioRef.current.oncanplay = () => {
+                audioRef.current.oncanplay = null;
+                audioRef.current.onerror = null;
                 audioRef.current.onended = () => setIsSpeaking(false);
-                audioRef.current.play().catch(() => {
+                audioRef.current.play().catch((e) => {
+                  console.error("Autoplay bị chặn:", e);
                   setIsSpeaking(false);
                 });
               };
 
               audioRef.current.onerror = () => {
                 if (attempt < maxRetries) {
-                  setTimeout(() => tryPlayAudio(url, attempt + 1, maxRetries), 2000);
+                  // Đợi 2s rồi thử lại
+                  setTimeout(() => tryPlayAudio(baseUrl, attempt + 1, maxRetries), 2000);
                 } else {
-                  console.warn("FPT Audio Timeout");
+                  console.warn("FPT Audio Timeout: Không thể tải file âm thanh sau nhiều lần thử.");
                   setIsSpeaking(false);
                 }
               };
@@ -352,8 +353,14 @@ const InterviewPage = () => {
               audioRef.current.load();
             };
 
-            tryPlayAudio(audioUrl, 1, 10);
+            // Chờ khoảng 1.5s trước khi bắt đầu thử lần đầu để giảm tải request
+            setTimeout(() => {
+               tryPlayAudio(audioUrl, 1, 15);
+            }, 1500);
+            
             return; 
+          } else {
+            console.error("FPT AI lỗi:", data);
           }
         } catch (err) {
           console.error("FPT API Error:", err);
