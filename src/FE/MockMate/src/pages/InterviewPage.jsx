@@ -265,9 +265,63 @@ const InterviewPage = () => {
 
     const voiceLang = setupData?.voiceLanguage || "Vietnamese";
 
-    // 1. Dùng FPT AI cho tiếng Việt (giọng Ban Mai)
+    const elevenLabsKey = import.meta.env.VITE_ELEVENLABS_API_KEY;
     const fptApiKey = import.meta.env.VITE_FPT_TTS_API_KEY;
-    
+
+    // 1. ƯU TIÊN SỐ 1: ElevenLabs (Hỗ trợ cả Tiếng Anh và Tiếng Việt qua eleven_multilingual_v2)
+    if (elevenLabsKey && elevenLabsKey !== "your_key_here") {
+      try {
+        setIsSpeaking(true);
+        // Bước 1: Lấy danh sách voices từ tài khoản
+        const voicesRes = await fetch("https://api.elevenlabs.io/v1/voices", {
+          headers: { "xi-api-key": elevenLabsKey }
+        });
+        
+        if (voicesRes.ok) {
+          const voicesData = await voicesRes.json();
+          const voices = voicesData.voices || [];
+          
+          if (voices.length > 0) {
+            // Ưu tiên các giọng hay hoặc lấy giọng đầu tiên có sẵn
+            const preferredNames = ["Rachel", "Josh", "Adam", "Bella", "Antoni", "Elli", "Sam"];
+            let selectedVoice = voices.find(v => preferredNames.some(name => v.name.includes(name))) || voices[0];
+            
+            // Bước 2: Gọi TTS với voice ID tìm được
+            const ttsRes = await fetch(
+              `https://api.elevenlabs.io/v1/text-to-speech/${selectedVoice.voice_id}`,
+              {
+                method: "POST",
+                headers: {
+                  "xi-api-key": elevenLabsKey,
+                  "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                  text: text,
+                  model_id: "eleven_multilingual_v2", // Model này hỗ trợ tốt tiếng Việt
+                  voice_settings: { stability: 0.5, similarity_boost: 0.75 }
+                })
+              }
+            );
+
+            if (ttsRes.ok) {
+              const audioBlob = await ttsRes.blob();
+              const blobUrl = URL.createObjectURL(audioBlob);
+              audioRef.current.src = blobUrl;
+              audioRef.current.onended = () => { setIsSpeaking(false); URL.revokeObjectURL(blobUrl); };
+              audioRef.current.onerror = () => { setIsSpeaking(false); fallbackBrowserTTS(text, voiceLang); };
+              audioRef.current.play().catch(() => fallbackBrowserTTS(text, voiceLang));
+              return; // Thành công! Dừng tại đây.
+            } else {
+              console.error("ElevenLabs TTS failed:", await ttsRes.text());
+            }
+          }
+        }
+      } catch (err) {
+        console.error("ElevenLabs Error:", err);
+      }
+    }
+
+    // 2. DỰ PHÒNG 1: FPT AI (Chỉ áp dụng nếu ElevenLabs lỗi VÀ đang chọn Tiếng Việt)
     if (voiceLang === "Vietnamese" && fptApiKey) {
       try {
         setIsSpeaking(true);
@@ -286,15 +340,13 @@ const InterviewPage = () => {
         if (data.error === 0 && data.async) {
           const audioUrl = data.async;
           
-          // FPT cần ~3-5 giây để render audio — delay trước khi thử load
           await new Promise(resolve => setTimeout(resolve, 3000));
 
-          // Dùng Audio element trực tiếp — không bị CORS block (khác với fetch HEAD)
           const tryPlayAudio = (url, attempt, maxRetries) => {
             audioRef.current.src = url;
             
             audioRef.current.oncanplaythrough = () => {
-              audioRef.current.oncanplaythrough = null; // cleanup
+              audioRef.current.oncanplaythrough = null;
               audioRef.current.onended = () => setIsSpeaking(false);
               audioRef.current.play().catch(() => {
                 fallbackBrowserTTS(text, voiceLang);
@@ -314,8 +366,7 @@ const InterviewPage = () => {
           };
 
           tryPlayAudio(audioUrl, 1, 10);
-
-          return; // Kết thúc tại đây nếu gọi FPT thành công
+          return; 
         }
       } catch (err) {
         console.error("FPT API Error:", err);
@@ -323,61 +374,7 @@ const InterviewPage = () => {
       }
     }
 
-    // 2. Dùng ElevenLabs cho tiếng Anh
-    const elevenLabsKey = import.meta.env.VITE_ELEVENLABS_API_KEY;
-    if (voiceLang === "English" && elevenLabsKey && elevenLabsKey !== "your_key_here") {
-      try {
-        setIsSpeaking(true);
-        // Bước 1: Lấy danh sách voices từ tài khoản
-        const voicesRes = await fetch("https://api.elevenlabs.io/v1/voices", {
-          headers: { "xi-api-key": elevenLabsKey }
-        });
-        const voicesData = await voicesRes.json();
-        const voices = voicesData.voices || [];
-        
-        if (voices.length === 0) throw new Error("No ElevenLabs voices found");
-        
-        // Ưu tiên giọng có tên chứa "Rachel", "Adam", "Josh" hoặc lấy giọng đầu tiên
-        const preferredNames = ["Rachel", "Josh", "Adam", "Bella", "Antoni"];
-        let selectedVoice = voices.find(v => preferredNames.some(name => v.name.includes(name))) || voices[0];
-        
-        // Bước 2: Gọi TTS với voice ID tìm được
-        const ttsRes = await fetch(
-          `https://api.elevenlabs.io/v1/text-to-speech/${selectedVoice.voice_id}`,
-          {
-            method: "POST",
-            headers: {
-              "xi-api-key": elevenLabsKey,
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-              text: text,
-              model_id: "eleven_multilingual_v2",
-              voice_settings: { stability: 0.5, similarity_boost: 0.75 }
-            })
-          }
-        );
-
-        if (!ttsRes.ok) {
-          const errData = await ttsRes.json();
-          console.error("ElevenLabs TTS Error:", errData);
-          throw new Error("ElevenLabs TTS failed");
-        }
-
-        const audioBlob = await ttsRes.blob();
-        const blobUrl = URL.createObjectURL(audioBlob);
-        audioRef.current.src = blobUrl;
-        audioRef.current.onended = () => { setIsSpeaking(false); URL.revokeObjectURL(blobUrl); };
-        audioRef.current.onerror = () => { setIsSpeaking(false); fallbackBrowserTTS(text, voiceLang); };
-        audioRef.current.play().catch(() => fallbackBrowserTTS(text, voiceLang));
-        return;
-      } catch (err) {
-        console.error("ElevenLabs Error:", err);
-        setIsSpeaking(false);
-      }
-    }
-
-    // 3. Dự phòng (Fallback): Dùng giọng trình duyệt mặc định
+    // 3. DỰ PHÒNG 2: Giọng trình duyệt mặc định
     fallbackBrowserTTS(text, voiceLang);
   };
 
