@@ -307,66 +307,65 @@ const InterviewPage = () => {
       return; 
     }
 
-    // 2. DÀNH CHO TIẾNG VIỆT -> Chỉ dùng FPT AI (Tuyệt đối KHÔNG dùng giọng Google)
+    // 2. DÀNH CHO TIẾNG VIỆT -> Bỏ hẳn FPT, dùng ElevenLabs (Mô hình Multilingual V2)
     if (voiceLang === "Vietnamese") {
-      if (fptApiKey) {
+      const elevenLabsKey = import.meta.env.VITE_ELEVENLABS_API_KEY;
+      if (elevenLabsKey && elevenLabsKey !== "your_key_here") {
         try {
           setIsSpeaking(true);
-          const response = await fetch("https://api.fpt.ai/hmi/tts/v5", {
-            method: "POST",
-            headers: {
-              "api-key": fptApiKey,
-              "voice": "banmai"
-            },
-            body: text
+          const voicesRes = await fetch("https://api.elevenlabs.io/v1/voices", {
+            headers: { "xi-api-key": elevenLabsKey }
           });
           
-          const data = await response.json();
-          if (data.error === 0 && data.async) {
-            const audioUrl = data.async;
+          if (voicesRes.ok) {
+            const voicesData = await voicesRes.json();
+            const voices = voicesData.voices || [];
             
-            // FPT cần thời gian render. Ta dùng Audio tải lại liên tục với cache-bust để lấy file sớm nhất
-            const tryPlayAudio = (baseUrl, attempt, maxRetries) => {
-              const urlWithCacheBust = `${baseUrl}?t=${new Date().getTime()}`;
-              audioRef.current.src = urlWithCacheBust;
+            if (voices.length > 0) {
+              // Chọn giọng nữ (hoặc nam) phù hợp nhất để đọc Tiếng Việt mượt mà.
+              // Bella, Rachel, Elli, Josh, Adam là những giọng rất tự nhiên trong ElevenLabs.
+              const preferredNames = ["Bella", "Rachel", "Elli", "Josh", "Adam"];
+              let selectedVoice = voices.find(v => preferredNames.some(name => v.name.includes(name))) || voices[0];
               
-              audioRef.current.oncanplay = () => {
-                audioRef.current.oncanplay = null;
-                audioRef.current.onerror = null;
-                audioRef.current.onended = () => setIsSpeaking(false);
+              const ttsRes = await fetch(
+                `https://api.elevenlabs.io/v1/text-to-speech/${selectedVoice.voice_id}`,
+                {
+                  method: "POST",
+                  headers: {
+                    "xi-api-key": elevenLabsKey,
+                    "Content-Type": "application/json"
+                  },
+                  body: JSON.stringify({
+                    text: text,
+                    model_id: "eleven_multilingual_v2", 
+                    voice_settings: { stability: 0.5, similarity_boost: 0.75 }
+                  })
+                }
+              );
+
+              if (ttsRes.ok) {
+                const audioBlob = await ttsRes.blob();
+                const blobUrl = URL.createObjectURL(audioBlob);
+                audioRef.current.src = blobUrl;
+                audioRef.current.onended = () => { setIsSpeaking(false); URL.revokeObjectURL(blobUrl); };
+                audioRef.current.onerror = () => { setIsSpeaking(false); };
                 audioRef.current.play().catch((e) => {
                   console.error("Autoplay bị chặn:", e);
                   setIsSpeaking(false);
                 });
-              };
-
-              audioRef.current.onerror = () => {
-                if (attempt < maxRetries) {
-                  // Đợi 2s rồi thử lại
-                  setTimeout(() => tryPlayAudio(baseUrl, attempt + 1, maxRetries), 2000);
-                } else {
-                  console.warn("FPT Audio Timeout: Không thể tải file âm thanh sau nhiều lần thử.");
-                  setIsSpeaking(false);
-                }
-              };
-
-              audioRef.current.load();
-            };
-
-            // Chờ khoảng 1.5s trước khi bắt đầu thử lần đầu để giảm tải request
-            setTimeout(() => {
-               tryPlayAudio(audioUrl, 1, 15);
-            }, 1500);
-            
-            return; 
+                return;
+              } else {
+                console.error("ElevenLabs TTS failed:", await ttsRes.text());
+              }
+            }
           } else {
-            console.error("FPT AI lỗi:", data);
+             console.error("ElevenLabs Voices fetch failed", await voicesRes.text());
           }
         } catch (err) {
-          console.error("FPT API Error:", err);
+          console.error("ElevenLabs Error:", err);
         }
       } else {
-        console.warn("FPT API Key is missing for Vietnamese voice.");
+        console.warn("ElevenLabs API Key is missing for Vietnamese voice.");
       }
       setIsSpeaking(false);
       return;
