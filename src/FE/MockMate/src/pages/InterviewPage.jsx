@@ -286,49 +286,34 @@ const InterviewPage = () => {
         if (data.error === 0 && data.async) {
           const audioUrl = data.async;
           
-          let attempts = 0;
-          const maxAttempts = 20; // Tăng lên 20 lần (20 giây tổng)
-          
-          const checkAndPlay = async () => {
-             try {
-                const res = await fetch(audioUrl, { method: 'HEAD' });
-                if (res.ok && res.status === 200) { // File đã sẵn sàng
-                   audioRef.current.src = audioUrl;
-                   audioRef.current.onended = () => setIsSpeaking(false);
-                   audioRef.current.onerror = () => {
-                      fallbackBrowserTTS(text, voiceLang);
-                   };
-                   audioRef.current.play().catch(e => {
-                      console.error("Audio autoplay blocked:", e);
-                      fallbackBrowserTTS(text, voiceLang);
-                   });
-                   return true;
-                }
-             } catch (e) {
-                // Ignore network errors during polling
-             }
-             return false;
-          };
-
-          // FPT cần ~3-5 giây để render audio — delay trước khi bắt đầu poll
+          // FPT cần ~3-5 giây để render audio — delay trước khi thử load
           await new Promise(resolve => setTimeout(resolve, 3000));
 
-          // Thử ngay sau delay
-          const readyNow = await checkAndPlay();
-          if (readyNow) return;
-
-          // Nếu chưa sẵn sàng, poll mỗi 1.5 giây
-          const pollTimer = setInterval(async () => {
-             attempts++;
-             const isReady = await checkAndPlay();
-             if (isReady) {
-                clearInterval(pollTimer);
-             } else if (attempts >= maxAttempts) {
-                clearInterval(pollTimer);
-                console.warn("FPT Audio Timeout sau", maxAttempts, "lần thử, dùng fallback");
+          // Dùng Audio element trực tiếp — không bị CORS block (khác với fetch HEAD)
+          const tryPlayAudio = (url, attempt, maxRetries) => {
+            audioRef.current.src = url;
+            
+            audioRef.current.oncanplaythrough = () => {
+              audioRef.current.oncanplaythrough = null; // cleanup
+              audioRef.current.onended = () => setIsSpeaking(false);
+              audioRef.current.play().catch(() => {
                 fallbackBrowserTTS(text, voiceLang);
-             }
-          }, 1500);
+              });
+            };
+
+            audioRef.current.onerror = () => {
+              if (attempt < maxRetries) {
+                setTimeout(() => tryPlayAudio(url, attempt + 1, maxRetries), 2000);
+              } else {
+                console.warn("FPT Audio Timeout, dùng fallback");
+                fallbackBrowserTTS(text, voiceLang);
+              }
+            };
+
+            audioRef.current.load();
+          };
+
+          tryPlayAudio(audioUrl, 1, 10);
 
           return; // Kết thúc tại đây nếu gọi FPT thành công
         }
