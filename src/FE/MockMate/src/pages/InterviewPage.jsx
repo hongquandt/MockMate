@@ -265,7 +265,7 @@ const InterviewPage = () => {
 
     const voiceLang = setupData?.voiceLanguage || "Vietnamese";
 
-    // 1. Dùng FPT AI (Giọng Ban Mai rất hay và API Key của bạn đang hoạt động tốt)
+    // 1. Dùng FPT AI cho tiếng Việt (giọng Ban Mai)
     const fptApiKey = import.meta.env.VITE_FPT_TTS_API_KEY;
     
     if (voiceLang === "Vietnamese" && fptApiKey) {
@@ -275,7 +275,9 @@ const InterviewPage = () => {
           method: "POST",
           headers: {
             "api-key": fptApiKey,
-            "voice": "banmai"
+            "voice": "banmai",
+            "speed": "",
+            "prose": ""
           },
           body: text
         });
@@ -285,12 +287,12 @@ const InterviewPage = () => {
           const audioUrl = data.async;
           
           let attempts = 0;
-          const maxAttempts = 10;
+          const maxAttempts = 20; // Tăng lên 20 lần (20 giây tổng)
           
           const checkAndPlay = async () => {
              try {
                 const res = await fetch(audioUrl, { method: 'HEAD' });
-                if (res.ok) { // Status 200: File đã sẵn sàng
+                if (res.ok && res.status === 200) { // File đã sẵn sàng
                    audioRef.current.src = audioUrl;
                    audioRef.current.onended = () => setIsSpeaking(false);
                    audioRef.current.onerror = () => {
@@ -303,11 +305,19 @@ const InterviewPage = () => {
                    return true;
                 }
              } catch (e) {
-                // Ignore network errors
+                // Ignore network errors during polling
              }
              return false;
           };
 
+          // FPT cần ~3-5 giây để render audio — delay trước khi bắt đầu poll
+          await new Promise(resolve => setTimeout(resolve, 3000));
+
+          // Thử ngay sau delay
+          const readyNow = await checkAndPlay();
+          if (readyNow) return;
+
+          // Nếu chưa sẵn sàng, poll mỗi 1.5 giây
           const pollTimer = setInterval(async () => {
              attempts++;
              const isReady = await checkAndPlay();
@@ -315,19 +325,74 @@ const InterviewPage = () => {
                 clearInterval(pollTimer);
              } else if (attempts >= maxAttempts) {
                 clearInterval(pollTimer);
-                console.warn("FPT Audio Timeout, falling back");
+                console.warn("FPT Audio Timeout sau", maxAttempts, "lần thử, dùng fallback");
                 fallbackBrowserTTS(text, voiceLang);
              }
-          }, 1000);
+          }, 1500);
 
           return; // Kết thúc tại đây nếu gọi FPT thành công
         }
       } catch (err) {
         console.error("FPT API Error:", err);
+        setIsSpeaking(false);
       }
     }
 
-    // 2. Dự phòng (Fallback): Dùng giọng trình duyệt mặc định
+    // 2. Dùng ElevenLabs cho tiếng Anh
+    const elevenLabsKey = import.meta.env.VITE_ELEVENLABS_API_KEY;
+    if (voiceLang === "English" && elevenLabsKey && elevenLabsKey !== "your_key_here") {
+      try {
+        setIsSpeaking(true);
+        // Bước 1: Lấy danh sách voices từ tài khoản
+        const voicesRes = await fetch("https://api.elevenlabs.io/v1/voices", {
+          headers: { "xi-api-key": elevenLabsKey }
+        });
+        const voicesData = await voicesRes.json();
+        const voices = voicesData.voices || [];
+        
+        if (voices.length === 0) throw new Error("No ElevenLabs voices found");
+        
+        // Ưu tiên giọng có tên chứa "Rachel", "Adam", "Josh" hoặc lấy giọng đầu tiên
+        const preferredNames = ["Rachel", "Josh", "Adam", "Bella", "Antoni"];
+        let selectedVoice = voices.find(v => preferredNames.some(name => v.name.includes(name))) || voices[0];
+        
+        // Bước 2: Gọi TTS với voice ID tìm được
+        const ttsRes = await fetch(
+          `https://api.elevenlabs.io/v1/text-to-speech/${selectedVoice.voice_id}`,
+          {
+            method: "POST",
+            headers: {
+              "xi-api-key": elevenLabsKey,
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              text: text,
+              model_id: "eleven_multilingual_v2",
+              voice_settings: { stability: 0.5, similarity_boost: 0.75 }
+            })
+          }
+        );
+
+        if (!ttsRes.ok) {
+          const errData = await ttsRes.json();
+          console.error("ElevenLabs TTS Error:", errData);
+          throw new Error("ElevenLabs TTS failed");
+        }
+
+        const audioBlob = await ttsRes.blob();
+        const blobUrl = URL.createObjectURL(audioBlob);
+        audioRef.current.src = blobUrl;
+        audioRef.current.onended = () => { setIsSpeaking(false); URL.revokeObjectURL(blobUrl); };
+        audioRef.current.onerror = () => { setIsSpeaking(false); fallbackBrowserTTS(text, voiceLang); };
+        audioRef.current.play().catch(() => fallbackBrowserTTS(text, voiceLang));
+        return;
+      } catch (err) {
+        console.error("ElevenLabs Error:", err);
+        setIsSpeaking(false);
+      }
+    }
+
+    // 3. Dự phòng (Fallback): Dùng giọng trình duyệt mặc định
     fallbackBrowserTTS(text, voiceLang);
   };
 
