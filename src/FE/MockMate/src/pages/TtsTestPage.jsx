@@ -60,11 +60,45 @@ const TtsTestPage = () => {
       return;
     }
 
-    addLog('info', 'Đang gọi API ElevenLabs...');
-    const voiceId = 'pNInz6obpgDQGcFmaJcg'; // Adam
-
     try {
-      const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
+      // Bước 1: Lấy danh sách voices từ tài khoản
+      addLog('info', 'Bước 1: Đang lấy danh sách voices từ tài khoản...');
+      const voicesRes = await fetch('https://api.elevenlabs.io/v1/voices', {
+        headers: { 'xi-api-key': apiKey }
+      });
+
+      if (!voicesRes.ok) {
+        const errText = await voicesRes.text();
+        addLog('error', `❌ Không lấy được danh sách voices: ${voicesRes.status} - ${errText}`);
+        setStatus('❌ Lỗi lấy voices');
+        setIsTesting(false);
+        return;
+      }
+
+      const voicesData = await voicesRes.json();
+      const voices = voicesData.voices || [];
+      addLog('info', `Tìm thấy ${voices.length} voices trong tài khoản.`);
+
+      if (voices.length === 0) {
+        addLog('error', '❌ Không có voice nào trong tài khoản ElevenLabs!');
+        setStatus('❌ Không có voices');
+        setIsTesting(false);
+        return;
+      }
+
+      // Log tất cả voices có sẵn
+      voices.forEach((v, i) => {
+        addLog('info', `  Voice ${i + 1}: "${v.name}" (ID: ${v.voice_id})`);
+      });
+
+      // Bước 2: Chọn voice phù hợp
+      const preferredNames = ['Rachel', 'Josh', 'Adam', 'Bella', 'Antoni', 'Elli', 'Sam'];
+      let selectedVoice = voices.find(v => preferredNames.some(name => v.name.includes(name))) || voices[0];
+      addLog('success', `✅ Đã chọn voice: "${selectedVoice.name}" (ID: ${selectedVoice.voice_id})`);
+
+      // Bước 3: Gọi TTS API
+      addLog('info', 'Bước 3: Đang gọi API text-to-speech...');
+      const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${selectedVoice.voice_id}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -100,7 +134,7 @@ const TtsTestPage = () => {
 
       audioRef.current.src = url;
       audioRef.current.onplay = () => { setStatus('🔊 Đang phát giọng ElevenLabs...'); addLog('success', '🔊 Audio đang phát!'); };
-      audioRef.current.onended = () => { setStatus('✅ Hoàn thành!'); addLog('success', '✅ ElevenLabs hoạt động hoàn hảo!'); };
+      audioRef.current.onended = () => { setStatus('✅ Hoàn thành!'); addLog('success', '✅ ElevenLabs hoạt động hoàn hảo!'); URL.revokeObjectURL(url); };
       audioRef.current.onerror = (e) => { setStatus('❌ Lỗi phát audio'); addLog('error', 'Lỗi phát audio: ' + JSON.stringify(e)); };
 
       await audioRef.current.play();
@@ -145,38 +179,57 @@ const TtsTestPage = () => {
         return;
       }
 
-      addLog('success', `✅ FPT trả về URL: ${data.async}. Đang đợi file sẵn sàng...`);
+      addLog('success', `✅ FPT trả về URL: ${data.async}`);
+      addLog('info', '⏳ Đang chờ 3 giây để FPT render audio...');
 
       // Unlock autoplay
       if (!audioRef.current) audioRef.current = new Audio();
       audioRef.current.src = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
       await audioRef.current.play().catch(() => {});
 
-      let attempts = 0;
-      const pollTimer = setInterval(async () => {
-        attempts++;
-        addLog('info', `Kiểm tra lần ${attempts}...`);
-        try {
-          const res = await fetch(data.async, { method: 'HEAD' });
-          if (res.ok) {
-            clearInterval(pollTimer);
-            addLog('success', '✅ File sẵn sàng! Đang phát...');
-            audioRef.current.src = data.async;
-            audioRef.current.onplay = () => { setStatus('🔊 Đang phát giọng FPT Ban Mai...'); };
-            audioRef.current.onended = () => { setStatus('✅ FPT AI hoàn thành!'); addLog('success', '✅ FPT AI hoạt động hoàn hảo!'); };
-            audioRef.current.onerror = () => { addLog('error', '❌ Lỗi phát audio FPT!'); };
-            await audioRef.current.play();
-            setIsTesting(false);
-          } else if (attempts >= 10) {
-            clearInterval(pollTimer);
-            addLog('error', '❌ Timeout: File audio FPT không sẵn sàng sau 10 giây.');
+      // Chờ 3 giây để FPT render file audio (CORS block HEAD request nên không poll được)
+      await new Promise(resolve => setTimeout(resolve, 3000));
+
+      // Dùng Audio element để load trực tiếp — không bị CORS block
+      addLog('info', 'Đang thử load audio trực tiếp...');
+
+      const tryPlayAudio = (url, attempt, maxRetries) => {
+        addLog('info', `Lần thử ${attempt}/${maxRetries}: Đang load ${url.substring(0, 60)}...`);
+        
+        audioRef.current.src = url;
+        
+        audioRef.current.oncanplaythrough = () => {
+          addLog('success', '✅ Audio sẵn sàng! Đang phát...');
+          audioRef.current.oncanplaythrough = null; // cleanup
+          setStatus('🔊 Đang phát giọng FPT Ban Mai...');
+          audioRef.current.play().catch(e => {
+            addLog('error', `❌ Lỗi autoplay: ${e.message}`);
+          });
+        };
+
+        audioRef.current.onended = () => {
+          setStatus('✅ FPT AI hoàn thành!');
+          addLog('success', '✅ FPT AI hoạt động hoàn hảo!');
+          setIsTesting(false);
+        };
+
+        audioRef.current.onerror = () => {
+          if (attempt < maxRetries) {
+            addLog('warn', `Lần ${attempt}: File chưa sẵn sàng, thử lại sau 2 giây...`);
+            setTimeout(() => tryPlayAudio(url, attempt + 1, maxRetries), 2000);
+          } else {
+            addLog('error', `❌ Timeout: File audio FPT không sẵn sàng sau ${maxRetries} lần thử.`);
             setStatus('❌ FPT Timeout');
             setIsTesting(false);
           }
-        } catch (e) {
-          addLog('warn', `Lần ${attempts}: Chưa sẵn sàng...`);
-        }
-      }, 1000);
+        };
+
+        // Trigger load
+        audioRef.current.load();
+      };
+
+      tryPlayAudio(data.async, 1, 10);
+
     } catch (err) {
       addLog('error', `❌ FPT Network Error: ${err.message}`);
       setStatus('❌ Lỗi kết nối FPT');
