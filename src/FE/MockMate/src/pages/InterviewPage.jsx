@@ -308,8 +308,11 @@ const InterviewPage = () => {
         return; // Kết thúc tại đây nếu thành công
       } catch (err) {
         console.error("ElevenLabs API Error:", err);
+        alert("Lỗi ElevenLabs: " + err.message + "\n(Vui lòng chụp màn hình lỗi này gửi cho mình)");
         // Rớt xuống dùng giọng trình duyệt
       }
+    } else {
+      alert("Lỗi: Không tìm thấy API Key của ElevenLabs. Đang dùng giọng mặc định.");
     }
 
     // 2. Dự phòng (Fallback): Dùng giọng trình duyệt mặc định
