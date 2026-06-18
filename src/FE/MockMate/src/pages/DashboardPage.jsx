@@ -133,6 +133,10 @@ const DashboardPage = () => {
                 <span className="material-symbols-outlined">psychology</span>
                 Test Tâm Lý (AI)
             </Link>
+            <Link to="/tts-test" className="flex items-center gap-3 px-4 py-3 text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-xl font-medium transition-colors">
+                <span className="material-symbols-outlined">volume_up</span>
+                Test Giọng Nói
+            </Link>
              <Link to="/" className="flex items-center gap-3 px-4 py-3 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 rounded-xl font-medium transition-colors">
                 <span className="material-symbols-outlined">home</span>
                 Trang chủ
