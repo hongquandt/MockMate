@@ -61,7 +61,7 @@ const EmotionTestPage = () => {
 
     try {
       // Gọi tới Flask API đang chạy ở port 5000 (app.py)
-      const response = await fetch(`${import.meta.env.VITE_EMOTION_API_URL || 'http://localhost:5000'}/detect-emotion`, {
+      const response = await fetch(`${import.meta.env.VITE_EMOTION_API_URL || 'https://hongquandt-mockmate-emotion-api1.hf.space'}/detect-emotion`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
