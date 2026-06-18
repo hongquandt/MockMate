@@ -135,7 +135,7 @@ const InterviewPage = () => {
 
     try {
       const response = await fetch(
-        `${import.meta.env.VITE_EMOTION_API_URL || 'http://localhost:5000'}/detect-emotion`,
+        `${import.meta.env.VITE_EMOTION_API_URL || 'https://hongquandt-mockmate-emotion-api1.hf.space'}/detect-emotion`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
