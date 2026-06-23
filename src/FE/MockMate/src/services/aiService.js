@@ -1,128 +1,74 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import OpenAI from "openai";
 
-const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
-const PRIMARY_MODEL = import.meta.env.VITE_GEMINI_MODEL || "gemini-2.0-flash";
+const API_KEY = import.meta.env.VITE_OPENAI_API_KEY;
 
-// Fallback model chain: if primary model quota is exhausted, try the next one
-const FALLBACK_MODELS = [PRIMARY_MODEL, "gemini-flash-latest", "gemini-2.0-flash-lite"];
-
-const genAI = new GoogleGenerativeAI(API_KEY);
+// Khởi tạo OpenAI client
+// Cấu hình dangerouslyAllowBrowser: true vì chạy trực tiếp trên Frontend
+const openai = new OpenAI({
+  apiKey: API_KEY || "YOUR_OPENAI_API_KEY", 
+  dangerouslyAllowBrowser: true 
+});
 
 /**
- * Helper: call Gemini with automatic retry + fallback models.
- * - On 429 (rate limit): waits and retries up to MAX_RETRIES times.
- * - If all retries fail for a model: tries the next fallback model.
- * - Extracts retry delay from error message when available.
+ * Hàm hỗ trợ gọi OpenAI API có tự động parse JSON
+ * @param {string} prompt Nội dung yêu cầu (Prompt)
+ * @param {string} modelName Tên model (gpt-4o-mini hoặc gpt-4o)
  */
-const MAX_RETRIES = 3;
+async function callOpenAIJSON(prompt, modelName = "gpt-4o-mini") {
+  try {
+    console.log(`[AI] Đang gọi OpenAI model: ${modelName}...`);
+    const response = await openai.chat.completions.create({
+      model: modelName,
+      messages: [
+        { role: "system", content: "You are a helpful, professional assistant. You must output only valid JSON without any markdown code blocks or extra text." },
+        { role: "user", content: prompt }
+      ],
+      response_format: { type: "json_object" },
+      temperature: 0.7,
+    });
 
-async function callWithRetryAndFallback(prompt) {
-  let lastErrorMsg = "";
-
-  for (const modelName of FALLBACK_MODELS) {
-    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-      try {
-        console.log(
-          `[AI] Trying model: ${modelName} (attempt ${attempt}/${MAX_RETRIES})`,
-        );
-        const model = genAI.getGenerativeModel({ model: modelName });
-        const result = await model.generateContent(prompt);
-        const response = await result.response;
-        let text = response.text();
-
-        // Clean up markdown code fences if present
-        text = text
-          .replace(/```json/g, "")
-          .replace(/```/g, "")
-          .trim();
-        return JSON.parse(text);
-      } catch (error) {
-        lastErrorMsg = error?.message || error?.toString();
-        const is429 = lastErrorMsg.includes("429") || error?.status === 429;
-        const is503 = lastErrorMsg.includes("503") || error?.status === 503;
-        const isQuotaZero = lastErrorMsg.includes("limit: 0");
-
-        if (isQuotaZero) {
-          // Model's free tier is completely disabled (limit: 0), skip to next model immediately
-          console.warn(
-            `[AI] Model "${modelName}" free tier is disabled (limit: 0). Trying next model...`,
-          );
-          break; // break retry loop, go to next model
-        }
-
-        if ((is429 || is503) && attempt < MAX_RETRIES) {
-          // Extract retry delay from error message, default to exponential backoff
-          const retryMatch = lastErrorMsg.match(/retry in (\d+(\.\d+)?)/i);
-          const waitSeconds = retryMatch
-            ? Math.ceil(parseFloat(retryMatch[1]))
-            : attempt * 15;
-          console.warn(
-            `[AI] Rate limited or overloaded (503/429) on "${modelName}". Waiting ${waitSeconds}s before retry...`,
-          );
-          await new Promise((resolve) =>
-            setTimeout(resolve, waitSeconds * 1000),
-          );
-          continue;
-        }
-
-        // Last attempt for this model failed
-        if (attempt === MAX_RETRIES) {
-          console.warn(
-            `[AI] All ${MAX_RETRIES} retries exhausted for model "${modelName}". Trying next model...`,
-          );
-          break; // try next model
-        }
-
-        // Non-429/503 error, throw immediately
-        throw new Error(`[Google AI Error] ${lastErrorMsg}`);
-      }
+    let text = response.choices[0].message.content;
+    
+    // Đề phòng OpenAI trả về markdown
+    text = text.replace(/```json/g, "").replace(/```/g, "").trim();
+    return JSON.parse(text);
+  } catch (error) {
+    console.error(`[OpenAI Error]`, error);
+    if (error.status === 401) {
+      throw new Error("Lỗi xác thực: OpenAI API Key không hợp lệ hoặc chưa được cấu hình.");
     }
+    if (error.status === 429) {
+      throw new Error("Lỗi hạn mức: Tài khoản OpenAI của bạn đã hết số dư (Credit) hoặc bị giới hạn (Rate Limit). Vui lòng nạp thêm tiền vào platform.openai.com.");
+    }
+    throw new Error(`Lỗi gọi OpenAI: ${error.message}`);
   }
-
-  // All models exhausted
-  throw new Error(
-    "Tất cả các model AI đều đang bị giới hạn hoặc API Key đã hết lượt sử dụng.\nChi tiết lỗi từ Google: " + 
-    lastErrorMsg + 
-    "\n\nVui lòng đợi vài phút rồi thử lại, hoặc tạo một API Key mới tại https://aistudio.google.com/apikey"
-  );
 }
 
 export const aiService = {
   analyzeCv: async (cvText) => {
     const prompt = `
-        ROLE: You are an expert HR and Recruitment Specialist across multiple industries (Marketing, Finance, IT, Healthcare, Business, etc.).
+        ROLE: You are an expert HR and Recruitment Specialist across multiple industries.
         Your goal is to provide an objective, balanced evaluation of the candidate's CV.
 
         CRITICAL INSTRUCTION: 
-        1. FIRST, carefully read the CV and determine the specific industry and field the candidate is applying for or has experience in (e.g., Marketing, Sales, IT, Graphic Design, etc.). 
-        2. DO NOT assume the candidate is in IT/Software Engineering unless the CV explicitly contains IT-specific skills (like programming languages, frameworks, cloud, etc.). If the CV is about Marketing, evaluate them STRICTLY on Marketing skills, campaigns, content creation, SEO, event management, etc.
-        3. Validate their readiness for THEIR actual chosen industry based on the extracted content.
+        1. FIRST, carefully read the CV and determine the specific industry and field the candidate is applying for or has experience in. 
+        2. DO NOT assume the candidate is in IT/Software Engineering unless the CV explicitly contains IT-specific skills. If the CV is about Marketing, evaluate them STRICTLY on Marketing skills.
+        3. Validate their readiness for THEIR actual chosen industry.
 
         CV CONTENT:
         """
         ${cvText}
         """
 
-        SCORING RUBRIC (Professional & Objective):
-        1. Impact & Results (Weight: 30%): Look for tangible results, measurable achievements, or clear demonstrations of executing their duties in THEIR industry.
-           - High score: Quantifiable impact or complex problem solving.
-           - Medium score: Clear responsibilities and successful completion of tasks.
-           - Low score: Vague descriptions without clear outcomes.
-        2. Professional Skills (Weight: 30%): Assess the depth, relevance, and proficiency of skills mentioned, including hard and soft skills applicable strictly to THEIR industry.
-        3. Experience Quality (Weight: 20%): Logical progression, relevant projects, or work history.
-        4. Structure & Clarity (Weight: 20%): Professional formatting, grammar, and clarity.
-
         TASK:
         Analyze the CV based on the detected industry and provide a structured JSON output.
         
         IMPORTANT: 
         - The candidate's CV might be in English or Vietnamese. You must read and evaluate it regardless of its language.
-        - Be objective. Do not be overly harsh, but do not give high scores for free.
-        - A solid, employable CV should typically score between 70-80. Outstanding ones can go higher (85+).
-        - Highlight specific gaps that, if fixed, would genuinely improve their employability in THEIR SPECIFIC FIELD.
+        - Be objective. A solid, employable CV should typically score between 70-80. Outstanding ones can go higher (85+).
+        - Highlight specific gaps that, if fixed, would genuinely improve their employability.
         - Generate 3-5 relevant interview questions based on their actual domain, skills, and gaps.
         - Regardless of the CV's original language, ALL text values in the JSON output MUST be written entirely in Vietnamese (Tiếng Việt), including summary, strengths, weaknesses, and interview questions.
-        - In the "summary", mention the detected industry (e.g. "Ứng viên có nền tảng tốt trong lĩnh vực Marketing...").
 
         OUTPUT JSON FORMAT:
         {
@@ -131,18 +77,19 @@ export const aiService = {
             "skills": ["kỹ năng 1", "kỹ năng 2"],
             "strengths": ["Điểm mạnh 1", "Điểm mạnh 2"],
             "weaknesses": ["Điểm cần cải thiện 1", "Điểm cần cải thiện 2"],
-            "summary": "Đánh giá tổng quan về trình độ ứng viên dựa trên đúng ngành nghề của họ (bằng tiếng Việt).",
+            "summary": "Đánh giá tổng quan về trình độ ứng viên dựa trên đúng ngành nghề của họ.",
             "interviewQuestions": [
-                "Câu hỏi 1 (đúng chuyên ngành của ứng viên)",
+                "Câu hỏi 1",
                 "Câu hỏi 2",
                 "Câu hỏi 3"
             ]
         }
         
-        Return ONLY valid JSON.
+        Return ONLY valid JSON matching the format above.
       `;
 
-    return await callWithRetryAndFallback(prompt);
+    // Sử dụng gpt-4o-mini cho tác vụ phân tích CV để tiết kiệm chi phí mà vẫn rất thông minh
+    return await callOpenAIJSON(prompt, "gpt-4o-mini");
   },
 
   generateInterviewQuestions: async (cvText) => {
@@ -161,18 +108,19 @@ export const aiService = {
         Verify if they truly understand the concepts or tools they listed.
         
         OUTPUT JSON FORMAT:
-        [
+        {
+          "questions": [
             "Question 1",
             "Question 2",
             "Question 3",
             "Question 4",
             "Question 5"
-        ]
-        
-        Return ONLY valid JSON array.
+          ]
+        }
       `;
 
-      return await callWithRetryAndFallback(prompt);
+      const result = await callOpenAIJSON(prompt, "gpt-4o-mini");
+      return result.questions;
     } catch (error) {
       console.error("AI Question Generation Error:", error);
       return [
@@ -204,26 +152,25 @@ export const aiService = {
         
         TASK:
         Generate 5 specific, highly relevant interview questions tailored EXACTLY to the above criteria and the candidate's CV level.
-        If the interview type is Behavioral, generate questions based on the STAR method related to their past experience.
-        If it's Situational, present a hypothetical scenario relevant to the job and level.
         The wording should be entirely in: ${setupData.language}.
         
         OUTPUT JSON FORMAT:
-        [
+        {
+          "questions": [
             "Question 1",
             "Question 2",
             "Question 3",
             "Question 4",
             "Question 5"
-        ]
-        
-        Return ONLY a valid JSON array of format string[].
+          ]
+        }
       `;
 
-      return await callWithRetryAndFallback(prompt);
+      // Dùng gpt-4o-mini để tạo câu hỏi cực nhanh
+      const result = await callOpenAIJSON(prompt, "gpt-4o-mini");
+      return result.questions;
     } catch (error) {
       console.error("AI Custom Question Generation Error:", error);
-      // Fallback
       return [
         "Xin bạn hãy giới thiệu ngắn gọn bản thân (Please introduce yourself).",
         "Kể về một dự án khó nhằn bạn từng tham gia trong công việc.",
@@ -284,23 +231,21 @@ export const aiService = {
         OUTPUT JSON FORMAT:
         {
           "totalScore": number (0-10),
-          "overallFeedback": "Tổng kết đánh giá phần trả lời của ứng viên, nhấn mạnh điểm mạnh và điểm yếu (bằng tiếng Việt).",
-          "emotionFeedback": "Đánh giá chi tiết về tâm lý ứng viên dựa trên EMOTION ANALYSIS SUMMARY và đưa ra lời khuyên (bằng tiếng Việt).",
+          "overallFeedback": "Tổng kết đánh giá phần trả lời của ứng viên, nhấn mạnh điểm mạnh và điểm yếu.",
+          "emotionFeedback": "Đánh giá chi tiết về tâm lý ứng viên dựa trên EMOTION ANALYSIS SUMMARY và đưa ra lời khuyên thiết thực.",
           "details": [
             {
               "questionIndex": number,
               "score": number (0-10, grade for this specific question),
-              "aiFeedback": "Nhận xét chi tiết cho câu trả lời này: ứng viên làm tốt điều gì, thiếu sót điều gì (bằng tiếng Việt)."
+              "aiFeedback": "Nhận xét chi tiết cho câu trả lời này: ứng viên làm tốt điều gì, thiếu sót điều gì."
             }
           ]
         }
-
-        Return ONLY valid JSON.
       `;
 
-    const result = await callWithRetryAndFallback(prompt);
+    // SỬ DỤNG GPT-4o CHUẨN ĐỂ CHẤM ĐIỂM (Cực kỳ chính xác và khắt khe như HR thật)
+    const result = await callOpenAIJSON(prompt, "gpt-4o");
 
-    // Merge emotionFeedback into overallFeedback so it gets saved to DB
     if (result && result.emotionFeedback) {
       result.overallFeedback =
         (result.overallFeedback || "") +

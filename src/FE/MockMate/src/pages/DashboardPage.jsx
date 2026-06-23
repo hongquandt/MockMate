@@ -4,6 +4,7 @@ import { uploadService } from '../services/uploadService';
 import { pdfService } from '../services/pdfService';
 import { aiService } from '../services/aiService';
 import logoImg from '../assets/img/z7430605225117_544001c3f21b8fc1cb5af11cb46703c0.jpg';
+import UserSidebar from '../components/UserSidebar';
 
 const DashboardPage = () => {
   const navigate = useNavigate();
@@ -114,35 +115,7 @@ const DashboardPage = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex">
-      {/* Sidebar - Simplified */}
-      <aside className="hidden md:flex flex-col w-64 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700">
-        <div className="p-6 flex items-center gap-3">
-             <img src={logoImg} alt="Logo" className="h-8 w-8 rounded-lg"/>
-             <span className="font-bold text-xl dark:text-white">MockMate</span>
-        </div>
-        <nav className="flex-1 px-4 py-4 space-y-2">
-            <Link to="/dashboard" className="flex items-center gap-3 px-4 py-3 bg-primary/10 text-primary rounded-xl font-medium">
-                <span className="material-symbols-outlined">dashboard</span>
-                Dashboard
-            </Link>
-            <Link to="/profile" className="flex items-center gap-3 px-4 py-3 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 rounded-xl font-medium transition-colors">
-                <span className="material-symbols-outlined">person</span>
-                Profile
-            </Link>
-            <Link to="/emotion-test" className="flex items-center gap-3 px-4 py-3 text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-xl font-medium transition-colors">
-                <span className="material-symbols-outlined">psychology</span>
-                Test Tâm Lý (AI)
-            </Link>
-            <Link to="/tts-test" className="flex items-center gap-3 px-4 py-3 text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-xl font-medium transition-colors">
-                <span className="material-symbols-outlined">volume_up</span>
-                Test Giọng Nói
-            </Link>
-             <Link to="/" className="flex items-center gap-3 px-4 py-3 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 rounded-xl font-medium transition-colors">
-                <span className="material-symbols-outlined">home</span>
-                Trang chủ
-            </Link>
-        </nav>
-      </aside>
+      <UserSidebar />
 
       {/* Main Content */}
       <main className="flex-1 p-6 md:p-10">

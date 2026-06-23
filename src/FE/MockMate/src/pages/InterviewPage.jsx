@@ -51,7 +51,8 @@ const InterviewPage = () => {
   const [questions, setQuestions] = useState(
     activeAnalysisData.interviewQuestions,
   );
-  const [isGeneratingQuestions, setIsGeneratingQuestions] = useState(false);
+  const [isGeneratingQuestions, setIsGeneratingQuestions] = useState(!!setupData);
+  const [lastPlayedQuestionIndex, setLastPlayedQuestionIndex] = useState(-1);
 
   useEffect(() => {
     const prepareInterview = async () => {
@@ -310,25 +311,37 @@ const InterviewPage = () => {
     // 2. DÀNH CHO TIẾNG VIỆT -> Bỏ hẳn FPT, dùng ElevenLabs (Mô hình Multilingual V2)
     if (voiceLang === "Vietnamese") {
       const elevenLabsKey = import.meta.env.VITE_ELEVENLABS_API_KEY;
+      const customVoiceId = import.meta.env.VITE_ELEVENLABS_VI_VOICE_ID; // Allow custom Vietnamese voice ID
+
       if (elevenLabsKey && elevenLabsKey !== "your_key_here") {
         try {
           setIsSpeaking(true);
-          const voicesRes = await fetch("https://api.elevenlabs.io/v1/voices", {
-            headers: { "xi-api-key": elevenLabsKey }
-          });
-          
-          if (voicesRes.ok) {
-            const voicesData = await voicesRes.json();
-            const voices = voicesData.voices || [];
+          let targetVoiceId = customVoiceId;
+
+          // Nếu không có customVoiceId, fetch danh sách voice có sẵn
+          if (!targetVoiceId) {
+            const voicesRes = await fetch("https://api.elevenlabs.io/v1/voices", {
+              headers: { "xi-api-key": elevenLabsKey }
+            });
             
-            if (voices.length > 0) {
-              // Chọn giọng nữ (hoặc nam) phù hợp nhất để đọc Tiếng Việt mượt mà.
-              // Bella, Rachel, Elli, Josh, Adam là những giọng rất tự nhiên trong ElevenLabs.
-              const preferredNames = ["Bella", "Rachel", "Elli", "Josh", "Adam"];
-              let selectedVoice = voices.find(v => preferredNames.some(name => v.name.includes(name))) || voices[0];
+            if (voicesRes.ok) {
+              const voicesData = await voicesRes.json();
+              const voices = voicesData.voices || [];
               
+              if (voices.length > 0) {
+                // Những giọng có accent đỡ hơn một chút khi đọc tiếng Việt
+                const preferredNames = ["Matilda", "Callum", "Charlie", "Alice"];
+                let selectedVoice = voices.find(v => preferredNames.some(name => v.name.includes(name))) || voices[0];
+                targetVoiceId = selectedVoice.voice_id;
+              }
+            } else {
+              console.error("ElevenLabs Voices fetch failed", await voicesRes.text());
+            }
+          }
+
+          if (targetVoiceId) {
               const ttsRes = await fetch(
-                `https://api.elevenlabs.io/v1/text-to-speech/${selectedVoice.voice_id}`,
+                `https://api.elevenlabs.io/v1/text-to-speech/${targetVoiceId}`,
                 {
                   method: "POST",
                   headers: {
@@ -357,9 +370,6 @@ const InterviewPage = () => {
               } else {
                 console.error("ElevenLabs TTS failed:", await ttsRes.text());
               }
-            }
-          } else {
-             console.error("ElevenLabs Voices fetch failed", await voicesRes.text());
           }
         } catch (err) {
           console.error("ElevenLabs Error:", err);
@@ -380,6 +390,19 @@ const InterviewPage = () => {
     }
     setIsSpeaking(false);
   };
+
+  // --- Autoplay Questions ---
+  useEffect(() => {
+    if (!isGeneratingQuestions && questions && questions.length > 0 && currentQuestionIndex !== lastPlayedQuestionIndex) {
+      const q = questions[currentQuestionIndex];
+      const textToSpeak = typeof q === "string" ? q : q.questionContent;
+      if (textToSpeak) {
+        speakText(textToSpeak);
+        setLastPlayedQuestionIndex(currentQuestionIndex);
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isGeneratingQuestions, questions, currentQuestionIndex, lastPlayedQuestionIndex]);
 
   // --- Speech-to-Text (STT) ---
   const startListening = () => {
