@@ -1,46 +1,54 @@
-import OpenAI from "openai";
-
-const API_KEY = import.meta.env.VITE_OPENAI_API_KEY;
-
-// Khởi tạo OpenAI client
-// Cấu hình dangerouslyAllowBrowser: true vì chạy trực tiếp trên Frontend
-const openai = new OpenAI({
-  apiKey: API_KEY || "YOUR_OPENAI_API_KEY", 
-  dangerouslyAllowBrowser: true 
-});
+const OPENAI_API_KEY = import.meta.env.VITE_OPENAI_API_KEY;
 
 /**
- * Hàm hỗ trợ gọi OpenAI API có tự động parse JSON
- * @param {string} prompt Nội dung yêu cầu (Prompt)
+ * Gọi OpenAI API trực tiếp bằng fetch() — ổn định 100% trên trình duyệt.
+ * @param {string} prompt Nội dung yêu cầu
+ * @param {string} systemPrompt System prompt (vai trò của AI)
  * @param {string} modelName Tên model (gpt-4o-mini hoặc gpt-4o)
  */
 async function callOpenAIJSON(prompt, systemPrompt, modelName = "gpt-4o-mini") {
   try {
     console.log(`[AI] Đang gọi OpenAI model: ${modelName}...`);
-    const response = await openai.chat.completions.create({
-      model: modelName,
-      messages: [
-        { role: "system", content: systemPrompt || "You are a helpful, professional assistant. You must output only valid JSON without any markdown code blocks or extra text." },
-        { role: "user", content: prompt }
-      ],
-      response_format: { type: "json_object" },
-      temperature: 0.7,
+
+    const res = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${OPENAI_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: modelName,
+        messages: [
+          { role: "system", content: systemPrompt || "You are a helpful, professional assistant. You must output only valid JSON without any markdown code blocks or extra text." },
+          { role: "user", content: prompt }
+        ],
+        response_format: { type: "json_object" },
+        temperature: 0.7,
+      }),
     });
 
-    let text = response.choices[0].message.content;
-    
+    const data = await res.json();
+
+    if (!res.ok) {
+      console.error("[OpenAI API Error]", data);
+      if (res.status === 401) {
+        throw new Error("Lỗi xác thực: OpenAI API Key không hợp lệ hoặc chưa được cấu hình.");
+      }
+      if (res.status === 429) {
+        throw new Error("Lỗi hạn mức: Tài khoản OpenAI đã hết Credit hoặc bị Rate Limit. Vui lòng nạp thêm tiền vào platform.openai.com.");
+      }
+      throw new Error(`OpenAI lỗi ${res.status}: ${data?.error?.message || JSON.stringify(data)}`);
+    }
+
+    let text = data.choices[0].message.content;
+    console.log(`[AI] Phản hồi thành công từ ${modelName}.`);
+
     // Đề phòng OpenAI trả về markdown
     text = text.replace(/```json/g, "").replace(/```/g, "").trim();
     return JSON.parse(text);
   } catch (error) {
     console.error(`[OpenAI Error]`, error);
-    if (error.status === 401) {
-      throw new Error("Lỗi xác thực: OpenAI API Key không hợp lệ hoặc chưa được cấu hình.");
-    }
-    if (error.status === 429) {
-      throw new Error("Lỗi hạn mức: Tài khoản OpenAI của bạn đã hết số dư (Credit) hoặc bị giới hạn (Rate Limit). Vui lòng nạp thêm tiền vào platform.openai.com.");
-    }
-    throw new Error(`Lỗi gọi OpenAI: ${error.message}`);
+    throw error;
   }
 }
 
