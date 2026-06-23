@@ -7,14 +7,18 @@ const InterviewSetupPage = () => {
   const navigate = useNavigate();
   const { analysisData } = location.state || {};
   
-  const [industry, setIndustry] = useState('');
+  const [industry, setIndustry] = useState(analysisData?.industry || '');
   const [difficulty, setDifficulty] = useState('');
   const [interviewType, setInterviewType] = useState('');
   const [jobDescription, setJobDescription] = useState('');
   const [language, setLanguage] = useState('Vietnamese');
   const [voiceLanguage, setVoiceLanguage] = useState('Vietnamese');
 
-  const industries = ['IT', 'Marketing', 'Communication', 'Data Science', 'BA'];
+  const defaultIndustries = ['IT', 'Marketing', 'Communication', 'Data Science', 'BA'];
+  const industries = analysisData?.industry && !defaultIndustries.includes(analysisData.industry) 
+      ? [analysisData.industry, ...defaultIndustries] 
+      : defaultIndustries;
+      
   const difficulties = ['Intern', 'Fresher', 'Junior', 'Senior'];
   const interviewTypes = ['Kiến thức', 'Hành vi', 'Tình huống', 'Khác'];
   const languages = ['Vietnamese', 'English'];
@@ -26,6 +30,14 @@ const InterviewSetupPage = () => {
     if (!industry || !difficulty || !interviewType || !language) {
       alert('Vui lòng chọn đầy đủ các trường bắt buộc');
       return;
+    }
+
+    // "Unlock" Speech Synthesis context bằng một câu nói rỗng ngay tại sự kiện click của người dùng
+    // Điều này giúp vượt qua cơ chế chặn Autoplay của trình duyệt đối với giọng đọc Google TTS
+    if ('speechSynthesis' in window) {
+      const utterance = new SpeechSynthesisUtterance("");
+      utterance.volume = 0;
+      window.speechSynthesis.speak(utterance);
     }
     
     const setupData = {
