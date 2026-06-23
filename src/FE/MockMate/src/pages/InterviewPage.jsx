@@ -49,7 +49,7 @@ const InterviewPage = () => {
 
   const activeAnalysisData = analysisData || defaultAnalysisData;
   const [questions, setQuestions] = useState(
-    activeAnalysisData.interviewQuestions,
+    activeAnalysisData.interviewQuestions || ["Đang tải câu hỏi..."],
   );
   const [isGeneratingQuestions, setIsGeneratingQuestions] = useState(!!setupData);
   const [lastPlayedQuestionIndex, setLastPlayedQuestionIndex] = useState(-1);
@@ -68,13 +68,16 @@ const InterviewPage = () => {
             rawCvText,
             setupData,
           );
-          // Đảm bảo questions luôn là mảng string
-          if (Array.isArray(generatedQuestions)) {
+          // Đảm bảo questions luôn là mảng string và không bị rỗng
+          if (Array.isArray(generatedQuestions) && generatedQuestions.length > 0) {
             finalQuestions = generatedQuestions.map(q => typeof q === 'string' ? q : (q?.questionContent || q?.question || JSON.stringify(q)));
+          } else {
+            finalQuestions = ["Vui lòng giới thiệu bản thân.", "Hãy nêu một điểm mạnh của bạn."];
           }
           setQuestions(finalQuestions);
         } catch (error) {
           console.error("Failed to generate custom questions. Using fallback.", error);
+          setQuestions(["Vui lòng giới thiệu bản thân.", "Hãy nêu một điểm mạnh của bạn."]);
         } finally {
           setIsGeneratingQuestions(false);
         }
@@ -237,8 +240,9 @@ const InterviewPage = () => {
     }
   };
 
-  // Đảm bảo currentQuestion luôn là string (không phải object)
-  const rawQuestion = questions[currentQuestionIndex];
+  // Đảm bảo currentQuestion luôn là string (không phải object), và an toàn khi questions rỗng
+  const safeQuestions = questions || ["Đang chuẩn bị câu hỏi..."];
+  const rawQuestion = safeQuestions[currentQuestionIndex] || "Câu hỏi không khả dụng.";
   const currentQuestion = typeof rawQuestion === 'string' ? rawQuestion : (rawQuestion?.questionContent || rawQuestion?.question || String(rawQuestion || ''));  // --- Text-to-Speech (TTS) ---
   const getBestVoice = (lang) => {
     const voices = window.speechSynthesis.getVoices();
@@ -622,7 +626,7 @@ const InterviewPage = () => {
               <div className="max-w-2xl text-center space-y-6 w-full">
                 <div className="flex items-center justify-center gap-3 mb-4">
                   <div className="px-4 py-1.5 bg-slate-800 rounded-full text-sm font-medium text-slate-400">
-                    Câu hỏi {currentQuestionIndex + 1} / {questions.length}
+                    Câu hỏi {currentQuestionIndex + 1} / {(questions || []).length || 1}
                   </div>
                   <div className="px-4 py-1.5 bg-slate-800 rounded-full text-sm font-medium text-amber-400 flex items-center gap-1.5">
                     <span className="material-symbols-outlined text-[16px]">
@@ -714,7 +718,7 @@ const InterviewPage = () => {
                   Câu trước
                 </button>
 
-                {currentQuestionIndex < questions.length - 1 ? (
+                {(currentQuestionIndex < ((questions || []).length - 1)) ? (
                   <button
                     onClick={() => {
                       saveCurrentAnswer(); // Auto-save on nav
@@ -736,7 +740,7 @@ const InterviewPage = () => {
                       try {
                         await saveCurrentAnswer(); // make sure last answer is saved locally
 
-                        let qaToGrade = questions.map((q, idx) => ({
+                        let qaToGrade = (questions || []).map((q, idx) => ({
                           questionIndex: idx,
                           question: typeof q === 'string' ? q : (q?.questionContent || q?.question || String(q)),
                           answer:

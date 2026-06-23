@@ -149,7 +149,7 @@ OUTPUT JSON:
 `;
 
       const result = await callOpenAIJSON(prompt, systemPrompt, "gpt-4o-mini");
-      return result.questions;
+      return Array.isArray(result) ? result : (result.questions || result.interviewQuestions || []);
     } catch (error) {
       console.error("AI Question Generation Error:", error);
       return [
@@ -193,7 +193,7 @@ OUTPUT JSON:
 `;
 
       const result = await callOpenAIJSON(prompt, systemPrompt, "gpt-4o-mini");
-      return result.questions;
+      return Array.isArray(result) ? result : (result.questions || result.interviewQuestions || []);
     } catch (error) {
       console.error("AI Custom Question Generation Error:", error);
       return [
