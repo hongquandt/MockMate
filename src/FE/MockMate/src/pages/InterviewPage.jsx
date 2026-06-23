@@ -64,13 +64,17 @@ const InterviewPage = () => {
         try {
           const rawCvText =
             analysisData?.rawCvText || cvText || "User CV details";
-          finalQuestions = await aiService.generateCustomQuestions(
+          const generatedQuestions = await aiService.generateCustomQuestions(
             rawCvText,
             setupData,
           );
+          // Đảm bảo questions luôn là mảng string
+          if (Array.isArray(generatedQuestions)) {
+            finalQuestions = generatedQuestions.map(q => typeof q === 'string' ? q : (q?.questionContent || q?.question || JSON.stringify(q)));
+          }
           setQuestions(finalQuestions);
         } catch (error) {
-          console.error("Failed to generate custom questions. Using fallback.");
+          console.error("Failed to generate custom questions. Using fallback.", error);
         } finally {
           setIsGeneratingQuestions(false);
         }
@@ -233,7 +237,9 @@ const InterviewPage = () => {
     }
   };
 
-  const currentQuestion = questions[currentQuestionIndex];  // --- Text-to-Speech (TTS) ---
+  // Đảm bảo currentQuestion luôn là string (không phải object)
+  const rawQuestion = questions[currentQuestionIndex];
+  const currentQuestion = typeof rawQuestion === 'string' ? rawQuestion : (rawQuestion?.questionContent || rawQuestion?.question || String(rawQuestion || ''));  // --- Text-to-Speech (TTS) ---
   const getBestVoice = (lang) => {
     const voices = window.speechSynthesis.getVoices();
     const langCode = lang === "Vietnamese" ? "vi" : "en";
@@ -732,9 +738,9 @@ const InterviewPage = () => {
 
                         let qaToGrade = questions.map((q, idx) => ({
                           questionIndex: idx,
-                          question: q,
+                          question: typeof q === 'string' ? q : (q?.questionContent || q?.question || String(q)),
                           answer:
-                            answers[idx] || userAnswer || "Không trả lời.", // Fallback for last question
+                            answers[idx] || userAnswer || "Không trả lời.",
                         }));
 
                         if (sessionId) {
