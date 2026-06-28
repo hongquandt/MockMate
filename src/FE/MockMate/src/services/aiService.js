@@ -1,54 +1,37 @@
-const OPENAI_API_KEY = import.meta.env.VITE_OPENAI_API_KEY;
+import { GoogleGenerativeAI } from "@google/generative-ai";
+
+const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
+const defaultModelName = import.meta.env.VITE_GEMINI_MODEL || "gemini-2.0-flash";
+
+const genAI = new GoogleGenerativeAI(GEMINI_API_KEY || "YOUR_GEMINI_KEY");
 
 /**
- * Gọi OpenAI API trực tiếp bằng fetch() — ổn định 100% trên trình duyệt.
+ * Gọi Gemini API có hỗ trợ JSON trực tiếp (thay thế OpenAI)
  * @param {string} prompt Nội dung yêu cầu
  * @param {string} systemPrompt System prompt (vai trò của AI)
- * @param {string} modelName Tên model (gpt-4o-mini hoặc gpt-4o)
  */
-async function callOpenAIJSON(prompt, systemPrompt, modelName = "gpt-4o-mini") {
+async function callGeminiJSON(prompt, systemPrompt) {
   try {
-    console.log(`[AI] Đang gọi OpenAI model: ${modelName}...`);
-
-    const res = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${OPENAI_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: modelName,
-        messages: [
-          { role: "system", content: systemPrompt || "You are a helpful, professional assistant. You must output only valid JSON without any markdown code blocks or extra text." },
-          { role: "user", content: prompt }
-        ],
-        response_format: { type: "json_object" },
-        temperature: 0.7,
-      }),
+    console.log(`[AI] Đang gọi Gemini model: ${defaultModelName}...`);
+    
+    const model = genAI.getGenerativeModel({
+      model: defaultModelName,
+      systemInstruction: systemPrompt || "You are a helpful, professional assistant. You must output only valid JSON without any markdown code blocks.",
+      generationConfig: {
+        responseMimeType: "application/json",
+      }
     });
 
-    const data = await res.json();
+    const result = await model.generateContent(prompt);
+    let text = result.response.text();
+    console.log(`[AI] Phản hồi thành công từ Gemini.`);
 
-    if (!res.ok) {
-      console.error("[OpenAI API Error]", data);
-      if (res.status === 401) {
-        throw new Error("Lỗi xác thực: OpenAI API Key không hợp lệ hoặc chưa được cấu hình.");
-      }
-      if (res.status === 429) {
-        throw new Error("Lỗi hạn mức: Tài khoản OpenAI đã hết Credit hoặc bị Rate Limit. Vui lòng nạp thêm tiền vào platform.openai.com.");
-      }
-      throw new Error(`OpenAI lỗi ${res.status}: ${data?.error?.message || JSON.stringify(data)}`);
-    }
-
-    let text = data.choices[0].message.content;
-    console.log(`[AI] Phản hồi thành công từ ${modelName}.`);
-
-    // Đề phòng OpenAI trả về markdown
+    // Đề phòng Gemini trả về markdown block
     text = text.replace(/```json/g, "").replace(/```/g, "").trim();
     return JSON.parse(text);
   } catch (error) {
-    console.error(`[OpenAI Error]`, error);
-    throw error;
+    console.error(`[Gemini Error]`, error);
+    throw new Error(`Lỗi gọi Gemini: ${error.message}`);
   }
 }
 
@@ -122,7 +105,7 @@ OUTPUT JSON FORMAT:
 
 Lưu ý: Tất cả nội dung PHẢI viết bằng Tiếng Việt. Trả về CHỈ JSON hợp lệ.`;
 
-    return await callOpenAIJSON(prompt, systemPrompt, "gpt-4o-mini");
+    return await callGeminiJSON(prompt, systemPrompt);
   },
 
   generateInterviewQuestions: async (cvText) => {
@@ -148,7 +131,7 @@ OUTPUT JSON:
 }
 `;
 
-      const result = await callOpenAIJSON(prompt, systemPrompt, "gpt-4o-mini");
+      const result = await callGeminiJSON(prompt, systemPrompt);
       return Array.isArray(result) ? result : (result.questions || result.interviewQuestions || []);
     } catch (error) {
       console.error("AI Question Generation Error:", error);
@@ -192,7 +175,7 @@ OUTPUT JSON:
 }
 `;
 
-      const result = await callOpenAIJSON(prompt, systemPrompt, "gpt-4o-mini");
+      const result = await callGeminiJSON(prompt, systemPrompt);
       return Array.isArray(result) ? result : (result.questions || result.interviewQuestions || []);
     } catch (error) {
       console.error("AI Custom Question Generation Error:", error);
@@ -299,7 +282,7 @@ OUTPUT JSON:
 }
 `;
 
-    const result = await callOpenAIJSON(prompt, systemPrompt, "gpt-4o");
+    const result = await callGeminiJSON(prompt, systemPrompt);
 
     if (result && result.emotionFeedback) {
       result.overallFeedback =
