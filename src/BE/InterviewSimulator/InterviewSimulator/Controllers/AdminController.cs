@@ -162,11 +162,11 @@ namespace InterviewSimulator.Controllers
         }
 
         [HttpGet("revenue/transactions")]
-        public async Task<IActionResult> GetRecentTransactions([FromQuery] int count = 10)
+        public async Task<IActionResult> GetRecentTransactions()
         {
             if (!IsAdmin()) return Forbid();
 
-            var txns = await _adminService.GetRecentTransactionsAsync(count);
+            var txns = await _adminService.GetRecentTransactionsAsync();
             return Ok(txns);
         }
     }
