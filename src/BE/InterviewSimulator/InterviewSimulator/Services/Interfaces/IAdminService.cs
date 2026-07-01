@@ -26,6 +26,6 @@ namespace InterviewSimulator.Services.Interfaces
         
         // Revenue
         Task<RevenueStatsDto> GetRevenueStatsAsync();
-        Task<List<TransactionDto>> GetRecentTransactionsAsync(int count = 10);
+        Task<List<TransactionDto>> GetRecentTransactionsAsync();
     }
 }

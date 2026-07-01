@@ -205,8 +205,8 @@ export const adminService = {
   getRevenueStats: async () => {
     return (await api.get('/admin/revenue/stats')).data;
   },
-  getRecentTransactions: async (count = 10) => {
-    return (await api.get(`/admin/revenue/transactions?count=${count}`)).data;
+  getRecentTransactions: async () => {
+    return (await api.get('/admin/revenue/transactions')).data;
   }
 };
 
