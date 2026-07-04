@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { authService, interviewService, paymentService } from '../services/api';
+import { trackPurchaseVip } from '../services/analytics';
 import { uploadService } from '../services/uploadService';
 import logoImg from '../assets/img/z7430605225117_544001c3f21b8fc1cb5af11cb46703c0.jpg';
 import UserSidebar from '../components/UserSidebar';
@@ -54,6 +55,7 @@ const UserProfilePage = () => {
                     console.log('Payment confirmation result:', result);
                     if (result.isVip) {
                         setPaymentStatus('success');
+                        trackPurchaseVip(50000); // GA4 Event (Assuming 50k for now, could be dynamic)
                         // Reload profile to show updated VIP status
                         await loadUserProfile();
                         // Also update localStorage user data

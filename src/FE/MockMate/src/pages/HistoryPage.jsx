@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { interviewService } from '../services/api';
+import { trackViewHistory } from '../services/analytics';
 import logoImg from '../assets/img/z7430605225117_544001c3f21b8fc1cb5af11cb46703c0.jpg';
 
 const HistoryPage = () => {
@@ -11,6 +12,7 @@ const HistoryPage = () => {
     const [detailLoading, setDetailLoading] = useState(false);
 
     useEffect(() => {
+        trackViewHistory(); // GA4 Event
         loadHistory();
     }, []);
 

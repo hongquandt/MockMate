@@ -4,6 +4,7 @@ import logoImg from '../assets/img/z7430605225117_544001c3f21b8fc1cb5af11cb46703
 
   import { authService } from '../services/api';
   import { useNavigate } from 'react-router-dom';
+  import { trackSignUp } from '../services/analytics';
 
   const RegisterPage = () => {
     const navigate = useNavigate();
@@ -42,6 +43,7 @@ import logoImg from '../assets/img/z7430605225117_544001c3f21b8fc1cb5af11cb46703
       setLoading(true);
       try {
         await authService.register(formData.fullName, formData.email, formData.password, formData.password);
+        trackSignUp('email'); // GA4 Event
         navigate('/');
       } catch (err) {
         setError(err.response?.data?.message || 'Registration failed.');
