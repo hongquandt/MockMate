@@ -1,11 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { paymentService } from '../services/api';
+import { trackViewVipPage } from '../services/analytics';
 
 const VipUpgradePage = () => {
     const navigate = useNavigate();
     const [selectedPlan, setSelectedPlan] = useState(null);
     const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        trackViewVipPage(); // GA4 Event
+    }, []);
 
     const plans = [
         // ... (Plans data remains same)

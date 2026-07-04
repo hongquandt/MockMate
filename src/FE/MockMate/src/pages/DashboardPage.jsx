@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { uploadService } from '../services/uploadService';
 import { pdfService } from '../services/pdfService';
 import { aiService } from '../services/aiService';
+import { trackUploadCV } from '../services/analytics';
 import logoImg from '../assets/img/z7430605225117_544001c3f21b8fc1cb5af11cb46703c0.jpg';
 import UserSidebar from '../components/UserSidebar';
 
@@ -85,6 +86,7 @@ const DashboardPage = () => {
       const realUrl = data.secure_url;
       // Update with real Cloudinary URL
       setUploadUrl(realUrl);
+      trackUploadCV('pdf'); // GA4 Event
       
       // 2. Extract Text locally (using the file object directly avoids CORS issues usually)
       // We can use the file reader with pdf.js

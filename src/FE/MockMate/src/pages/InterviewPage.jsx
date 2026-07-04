@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useLocation, Link, useNavigate } from "react-router-dom";
 import { interviewService } from "../services/api";
 import { aiService } from "../services/aiService";
+import { trackStartInterview, trackSubmitAnswer, trackCompleteInterview } from '../services/analytics';
 import logoImg from "../assets/img/z7430605225117_544001c3f21b8fc1cb5af11cb46703c0.jpg";
 
 const InterviewPage = () => {
@@ -94,6 +95,7 @@ const InterviewPage = () => {
           if (data && data.sessionId) {
             setSessionId(data.sessionId);
             setSessionStartTime(Date.now());
+            trackStartInterview(setupData?.jobPosition?.title || setupData?.jobTitle || "Unknown"); // GA4 Event
           } else {
             console.error("Session started but no sessionId returned", data);
           }
@@ -221,6 +223,7 @@ const InterviewPage = () => {
           userAnswer,
           timeTaken,
         );
+        trackSubmitAnswer(currentQuestionIndex + 1, timeTaken); // GA4 Event
 
         // Update local state map firmly
         setAnswers((prev) => ({
@@ -757,6 +760,8 @@ const InterviewPage = () => {
                             sessionId,
                             gradingResult,
                           );
+                          const totalScore = gradingResult?.totalScore || 0;
+                          trackCompleteInterview(setupData?.jobPosition?.title || setupData?.jobTitle || "Unknown", totalScore, elapsedTime); // GA4 Event
                         }
                         navigate(`/cv-history/${sessionId}`);
                       } catch (err) {

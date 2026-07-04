@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import logoImg from '../assets/img/z7430605225117_544001c3f21b8fc1cb5af11cb46703c0.jpg';
 import { authService } from '../services/api';
+import { trackLogin } from '../services/analytics';
 import { useGoogleLogin } from '@react-oauth/google';
 import axios from 'axios';
 import ReCAPTCHA from 'react-google-recaptcha';
@@ -59,6 +60,8 @@ const LoginPage = () => {
         setLoading(true);
         try {
             const res = await authService.login(formData.email, formData.password, captchaToken);
+            trackLogin('email'); // GA4 Event
+            
             if (res.user && res.user.roleId === 1) {
                 navigate('/admin/dashboard');
             } else if (res.user && res.user.roleId === 3) {
@@ -94,6 +97,7 @@ const LoginPage = () => {
                     name: userInfo.data.name,
                     avatarUrl: userInfo.data.picture
                 });
+                trackLogin('google'); // GA4 Event
                 navigate('/');
             } catch (err) {
                 console.error(err);
@@ -138,6 +142,7 @@ const LoginPage = () => {
                         console.log("Sending to Backend:", loginData);
 
                         await authService.socialLogin(loginData);
+                        trackLogin('facebook'); // GA4 Event
                         navigate('/');
                     } catch (err) {
                         console.error("Backend Login Error:", err);
