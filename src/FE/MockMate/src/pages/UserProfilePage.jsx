@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { authService, interviewService, paymentService } from '../services/api';
+import { trackPurchaseVip } from '../services/analytics';
 import { uploadService } from '../services/uploadService';
 import logoImg from '../assets/img/z7430605225117_544001c3f21b8fc1cb5af11cb46703c0.jpg';
+import UserSidebar from '../components/UserSidebar';
 
 const UserProfilePage = () => {
     const [activeTab, setActiveTab] = useState('overview');
@@ -53,6 +55,7 @@ const UserProfilePage = () => {
                     console.log('Payment confirmation result:', result);
                     if (result.isVip) {
                         setPaymentStatus('success');
+                        trackPurchaseVip(50000); // GA4 Event (Assuming 50k for now, could be dynamic)
                         // Reload profile to show updated VIP status
                         await loadUserProfile();
                         // Also update localStorage user data
@@ -172,42 +175,7 @@ const UserProfilePage = () => {
 
     return (
         <div className="flex h-screen bg-slate-50 text-slate-900 overflow-hidden font-sans">
-            {/* Sidebar */}
-            <aside className="w-64 bg-white border-r border-slate-200 hidden md:flex flex-col">
-                <div className="p-6 flex items-center gap-3 border-b border-slate-100">
-                    <img src={logoImg} alt="Logo" className="h-8 w-8 rounded-lg" />
-                    <span className="text-lg font-bold text-slate-800">MockMate</span>
-                </div>
-                
-                <nav className="flex-1 px-4 space-y-2 mt-6">
-                    <NavItem 
-                        icon="dashboard" 
-                        label="Dashboard" 
-                        onClick={() => navigate('/dashboard')} 
-                    />
-                    <NavItem 
-                        icon="person" 
-                        label="Thông tin cá nhân" 
-                        active={activeTab === 'overview' || activeTab === 'edit'} 
-                        onClick={() => setActiveTab('overview')} 
-                    />
-
-                    <NavItem 
-                        icon="workspace_premium" 
-                        label="Nâng cấp VIP" 
-                        active={false}
-                        onClick={() => navigate('/vip-upgrade')}
-                        isSpecial
-                    />
-                </nav>
-
-                <div className="p-4 border-t border-slate-100">
-                    <button onClick={handleLogout} className="flex items-center gap-3 w-full p-3 rounded-xl hover:bg-red-50 text-red-500 transition-colors">
-                        <span className="material-symbols-outlined">logout</span>
-                        <span className="font-medium">Đăng xuất</span>
-                    </button>
-                </div>
-            </aside>
+            <UserSidebar />
 
             {/* Main Content */}
             <main className="flex-1 overflow-y-auto relative">
@@ -456,22 +424,6 @@ const UserProfilePage = () => {
 };
 
 // Components
-const NavItem = ({ icon, label, active, onClick, isSpecial }) => (
-    <button 
-        onClick={onClick}
-        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-medium text-left mb-1
-        ${active 
-            ? 'bg-purple-100 text-purple-700' 
-            : isSpecial 
-                ? 'text-amber-600 hover:bg-amber-50' 
-                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-        }`}
-    >
-        <span className="material-symbols-outlined">{icon}</span>
-        {label}
-    </button>
-);
-
 const InfoRow = ({ label, value, isVip }) => (
     <div className="flex justify-between py-3 border-b border-slate-100 last:border-0 hover:bg-slate-50 px-2 rounded transition-colors">
         <span className="text-slate-500 font-medium">{label}</span>

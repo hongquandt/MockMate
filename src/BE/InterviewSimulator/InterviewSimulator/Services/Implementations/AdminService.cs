@@ -259,16 +259,14 @@ namespace InterviewSimulator.Services.Implementations
         public async Task<RevenueStatsDto> GetRevenueStatsAsync()
         {
             var successfulTransactions = await _context.PaymentTransactions
+                .Include(t => t.User)
                 .Where(t => t.Status == 1) // 1: Success
                 .ToListAsync();
             
             var total = successfulTransactions.Sum(t => t.Amount);
             
-            // Assuming standard MockMate usage:
-            // "VIP" upgrades might be an exact amount or we just distribute it.
-            // In a real app we'd have a column for TransactionType, here we mock the split.
-            var vipRev = total * 0.4m; 
-            var jobRev = total * 0.6m;
+            var vipRev = successfulTransactions.Where(t => t.User.RoleId == 2).Sum(t => t.Amount); 
+            var jobRev = successfulTransactions.Where(t => t.User.RoleId == 3).Sum(t => t.Amount);
 
             return new RevenueStatsDto
             {
@@ -279,13 +277,11 @@ namespace InterviewSimulator.Services.Implementations
             };
         }
 
-        public async Task<List<TransactionDto>> GetRecentTransactionsAsync(int count = 10)
+        public async Task<List<TransactionDto>> GetRecentTransactionsAsync()
         {
             return await _context.PaymentTransactions
                 .Include(t => t.User)
-                .Where(t => t.Status == 1)
                 .OrderByDescending(t => t.TransactionDate)
-                .Take(count)
                 .Select(t => new TransactionDto
                 {
                     Id = t.Id,
@@ -293,7 +289,7 @@ namespace InterviewSimulator.Services.Implementations
                     Amount = t.Amount,
                     TransactionDate = t.TransactionDate,
                     UserEmail = t.User.Email,
-                    Type = "VIP Upgrade" // Placeholder since we don't have transaction type field yet
+                    Type = "VIP Upgrade"
                 }).ToListAsync();
         }
     }

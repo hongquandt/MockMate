@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { interviewService, authService } from '../services/api';
+import UserSidebar from '../components/UserSidebar';
 
 const CvHistoryPage = () => {
     const { id } = useParams();
@@ -65,9 +66,11 @@ const CvHistoryPage = () => {
     };
 
     return (
-        <div className="min-h-screen bg-slate-50 flex flex-col font-sans text-slate-900">
-            {/* Header */}
-            <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between sticky top-0 z-10 shadow-sm">
+        <div className="flex h-screen bg-slate-50 font-sans text-slate-900 overflow-hidden">
+            <UserSidebar />
+            <div className="flex-1 flex flex-col min-w-0">
+                {/* Header */}
+                <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between sticky top-0 z-10 shadow-sm">
                 <div className="flex items-center gap-3">
                     <button onClick={() => navigate('/profile')} className="p-2 hover:bg-slate-100 rounded-full text-slate-500">
                         <span className="material-symbols-outlined">arrow_back</span>
@@ -316,6 +319,7 @@ const CvHistoryPage = () => {
                         <div className="text-center py-20">Không tìm thấy dữ liệu đánh giá CV.</div>
                     )}
                 </main>
+            </div>
             </div>
         </div>
     );

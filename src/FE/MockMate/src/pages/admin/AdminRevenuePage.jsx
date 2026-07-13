@@ -6,7 +6,6 @@ import { authService, adminService } from '../../services/api';
 const AdminRevenuePage = () => {
     const navigate = useNavigate();
     const [user, setUser] = useState(null);
-
     const [stats, setStats] = useState({
         totalRevenue: 0,
         vipRevenue: 0,
@@ -15,6 +14,8 @@ const AdminRevenuePage = () => {
     });
     const [transactions, setTransactions] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [currentPage, setCurrentPage] = useState(1);
+    const ITEMS_PER_PAGE = 10;
 
     useEffect(() => {
         const u = authService.getCurrentUser();
@@ -31,7 +32,7 @@ const AdminRevenuePage = () => {
             setLoading(true);
             const [statsData, txnsData] = await Promise.all([
                 adminService.getRevenueStats(),
-                adminService.getRecentTransactions(10)
+                adminService.getRecentTransactions()
             ]);
             setStats(statsData);
             setTransactions(txnsData);
@@ -46,6 +47,12 @@ const AdminRevenuePage = () => {
 
     const formatCurrency = (val) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val);
 
+    // Pagination
+    const totalPages = Math.ceil(transactions.length / ITEMS_PER_PAGE);
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    const endIndex = startIndex + ITEMS_PER_PAGE;
+    const paginatedTransactions = transactions.slice(startIndex, endIndex);
+
     return (
         <div className="min-h-screen bg-slate-50 flex">
             <AdminSidebar />
@@ -59,6 +66,7 @@ const AdminRevenuePage = () => {
                     <div className="text-center py-8 text-slate-500">Loading revenue data...</div>
                 ) : (
                     <>
+                        {/* Stats Cards */}
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                             <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
                                 <div className="flex justify-between items-center mb-4">
@@ -88,8 +96,14 @@ const AdminRevenuePage = () => {
                             </div>
                         </div>
 
+                        {/* Transactions Table */}
                         <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
-                            <h2 className="text-xl font-bold text-slate-800 mb-6">Recent Transactions</h2>
+                            <div className="flex justify-between items-center mb-6">
+                                <h2 className="text-xl font-bold text-slate-800">All Transactions</h2>
+                                <span className="text-sm text-slate-500">
+                                    Showing {transactions.length > 0 ? startIndex + 1 : 0}–{Math.min(endIndex, transactions.length)} of {transactions.length}
+                                </span>
+                            </div>
                             <div className="overflow-x-auto">
                                 <table className="w-full text-left border-collapse">
                                     <thead>
@@ -102,8 +116,8 @@ const AdminRevenuePage = () => {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {transactions.map(t => (
-                                            <tr key={t.id} className="border-b border-slate-100 hover:bg-slate-50">
+                                        {paginatedTransactions.map(t => (
+                                            <tr key={t.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
                                                 <td className="py-4 px-4 font-medium text-slate-700">{t.transactionCode}</td>
                                                 <td className="py-4 px-4">{t.userEmail}</td>
                                                 <td className="py-4 px-4">
@@ -117,6 +131,39 @@ const AdminRevenuePage = () => {
                                         ))}
                                     </tbody>
                                 </table>
+                            </div>
+
+                            {/* Pagination */}
+                            <div className="flex items-center justify-between border-t border-slate-200 pt-4 mt-4">
+                                <button
+                                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                    disabled={currentPage === 1}
+                                    className={`inline-flex items-center gap-1 px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${currentPage === 1 ? 'border-slate-200 text-slate-300 cursor-not-allowed' : 'border-slate-300 text-slate-700 hover:bg-slate-50'}`}
+                                >
+                                    <span className="material-symbols-outlined text-sm">chevron_left</span>
+                                    Previous
+                                </button>
+
+                                <div className="flex items-center gap-1">
+                                    {[...Array(Math.max(1, totalPages))].map((_, i) => (
+                                        <button
+                                            key={i}
+                                            onClick={() => setCurrentPage(i + 1)}
+                                            className={`w-9 h-9 rounded-lg text-sm font-semibold transition-colors ${currentPage === i + 1 ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'}`}
+                                        >
+                                            {i + 1}
+                                        </button>
+                                    ))}
+                                </div>
+
+                                <button
+                                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                    disabled={currentPage === totalPages || totalPages === 0}
+                                    className={`inline-flex items-center gap-1 px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${currentPage === totalPages || totalPages === 0 ? 'border-slate-200 text-slate-300 cursor-not-allowed' : 'border-slate-300 text-slate-700 hover:bg-slate-50'}`}
+                                >
+                                    Next
+                                    <span className="material-symbols-outlined text-sm">chevron_right</span>
+                                </button>
                             </div>
                         </div>
                     </>

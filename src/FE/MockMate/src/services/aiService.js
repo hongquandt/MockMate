@@ -1,170 +1,138 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
-const PRIMARY_MODEL = import.meta.env.VITE_GEMINI_MODEL || "gemini-2.0-flash";
+const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
+const defaultModelName = import.meta.env.VITE_GEMINI_MODEL || "gemini-2.0-flash";
 
-// Fallback model chain: if primary model quota is exhausted, try the next one
-const FALLBACK_MODELS = [PRIMARY_MODEL, "gemini-flash-latest", "gemini-2.0-flash-lite"];
-
-const genAI = new GoogleGenerativeAI(API_KEY);
+const genAI = new GoogleGenerativeAI(GEMINI_API_KEY || "YOUR_GEMINI_KEY");
 
 /**
- * Helper: call Gemini with automatic retry + fallback models.
- * - On 429 (rate limit): waits and retries up to MAX_RETRIES times.
- * - If all retries fail for a model: tries the next fallback model.
- * - Extracts retry delay from error message when available.
+ * Gọi Gemini API có hỗ trợ JSON trực tiếp (thay thế OpenAI)
+ * @param {string} prompt Nội dung yêu cầu
+ * @param {string} systemPrompt System prompt (vai trò của AI)
  */
-const MAX_RETRIES = 3;
-
-async function callWithRetryAndFallback(prompt) {
-  let lastErrorMsg = "";
-
-  for (const modelName of FALLBACK_MODELS) {
-    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-      try {
-        console.log(
-          `[AI] Trying model: ${modelName} (attempt ${attempt}/${MAX_RETRIES})`,
-        );
-        const model = genAI.getGenerativeModel({ model: modelName });
-        const result = await model.generateContent(prompt);
-        const response = await result.response;
-        let text = response.text();
-
-        // Clean up markdown code fences if present
-        text = text
-          .replace(/```json/g, "")
-          .replace(/```/g, "")
-          .trim();
-        return JSON.parse(text);
-      } catch (error) {
-        lastErrorMsg = error?.message || error?.toString();
-        const is429 = lastErrorMsg.includes("429") || error?.status === 429;
-        const is503 = lastErrorMsg.includes("503") || error?.status === 503;
-        const isQuotaZero = lastErrorMsg.includes("limit: 0");
-
-        if (isQuotaZero) {
-          // Model's free tier is completely disabled (limit: 0), skip to next model immediately
-          console.warn(
-            `[AI] Model "${modelName}" free tier is disabled (limit: 0). Trying next model...`,
-          );
-          break; // break retry loop, go to next model
-        }
-
-        if ((is429 || is503) && attempt < MAX_RETRIES) {
-          // Extract retry delay from error message, default to exponential backoff
-          const retryMatch = lastErrorMsg.match(/retry in (\d+(\.\d+)?)/i);
-          const waitSeconds = retryMatch
-            ? Math.ceil(parseFloat(retryMatch[1]))
-            : attempt * 15;
-          console.warn(
-            `[AI] Rate limited or overloaded (503/429) on "${modelName}". Waiting ${waitSeconds}s before retry...`,
-          );
-          await new Promise((resolve) =>
-            setTimeout(resolve, waitSeconds * 1000),
-          );
-          continue;
-        }
-
-        // Last attempt for this model failed
-        if (attempt === MAX_RETRIES) {
-          console.warn(
-            `[AI] All ${MAX_RETRIES} retries exhausted for model "${modelName}". Trying next model...`,
-          );
-          break; // try next model
-        }
-
-        // Non-429/503 error, throw immediately
-        throw new Error(`[Google AI Error] ${lastErrorMsg}`);
+async function callGeminiJSON(prompt, systemPrompt) {
+  try {
+    console.log(`[AI] Đang gọi Gemini model: ${defaultModelName}...`);
+    
+    const model = genAI.getGenerativeModel({
+      model: defaultModelName,
+      systemInstruction: systemPrompt || "You are a helpful, professional assistant. You must output only valid JSON without any markdown code blocks.",
+      generationConfig: {
+        responseMimeType: "application/json",
       }
-    }
-  }
+    });
 
-  // All models exhausted
-  throw new Error(
-    "Tất cả các model AI đều đang bị giới hạn hoặc API Key đã hết lượt sử dụng.\nChi tiết lỗi từ Google: " + 
-    lastErrorMsg + 
-    "\n\nVui lòng đợi vài phút rồi thử lại, hoặc tạo một API Key mới tại https://aistudio.google.com/apikey"
-  );
+    const result = await model.generateContent(prompt);
+    let text = result.response.text();
+    console.log(`[AI] Phản hồi thành công từ Gemini.`);
+
+    // Đề phòng Gemini trả về markdown block
+    text = text.replace(/```json/g, "").replace(/```/g, "").trim();
+    return JSON.parse(text);
+  } catch (error) {
+    console.error(`[Gemini Error]`, error);
+    throw new Error(`Lỗi gọi Gemini: ${error.message}`);
+  }
 }
 
 export const aiService = {
   analyzeCv: async (cvText) => {
+    const systemPrompt = `Bạn là một chuyên gia Tuyển dụng & Nhân sự (HR) cấp cao với hơn 15 năm kinh nghiệm đánh giá CV ứng viên ở nhiều ngành nghề khác nhau (IT, Marketing, Finance, Design, HR, Sales, Communication, Data Science, v.v.).
+
+Nguyên tắc cốt lõi:
+- Bạn PHẢI đọc kỹ toàn bộ CV trước khi đưa ra bất kỳ nhận xét nào.
+- Bạn PHẢI xác định đúng ngành nghề thực tế của ứng viên dựa trên nội dung CV (KHÔNG mặc định là IT nếu CV không đề cập đến lập trình).
+- Bạn đánh giá CV dựa trên ĐÚNG tiêu chuẩn của ngành nghề đã xác định.
+- Bạn viết nhận xét chi tiết, có chiều sâu, mang tính xây dựng — giống như một HR thật sự đang review CV cho ứng viên.
+- Tất cả nội dung text trong JSON output PHẢI được viết hoàn toàn bằng Tiếng Việt.
+- Bạn chỉ trả về JSON hợp lệ, không có markdown hay text thừa.`;
+
     const prompt = `
-        ROLE: You are an expert HR and Recruitment Specialist. Your goal is to provide an objective, balanced evaluation of the candidate's CV, validating their readiness for their chosen industry while being fair.
+Hãy phân tích CV dưới đây một cách chi tiết và chuyên sâu.
 
-        INDUSTRY AGNOSTIC CV CONTENT:
-        """
-        \${cvText}
-        """
+=== NỘI DUNG CV ===
+${cvText}
+=== HẾT CV ===
 
-        SCORING RUBRIC (Professional & Objective):
-        1. Impact & Results (Weight: 30%): Look for tangible results, measurable achievements, or clear demonstrations of executing their duties.
-           - High score: Quantifiable impact or complex problem solving in their field.
-           - Medium score: Clear responsibilities and successful completion of tasks.
-           - Low score: Vague descriptions without clear outcomes.
-        2. Professional Skills (Weight: 30%): Assess the depth, relevance, and proficiency of skills mentioned, including hard and soft skills applicable to their industry.
-        3. Experience Quality (Weight: 20%): Logical progression, relevant projects, or work history.
-        4. Structure & Clarity (Weight: 20%): Professional formatting, grammar, and clarity.
+YÊU CẦU PHÂN TÍCH CHI TIẾT:
 
-        TASK:
-        Analyze the CV and provide a structured JSON output.
-        
-        IMPORTANT: 
-        - The candidate's CV might be in English or Vietnamese. You must read and evaluate it regardless of its language.
-        - Be objective. Do not be overly harsh, but do not give high scores for free.
-        - A solid, employable CV should typically score between 70-80. Outstanding ones can go higher (85+).
-        - Highlight specific gaps that, if fixed, would genuinely improve their employability.
-        - Generate 3-5 relevant interview questions based on their domain, skills, and gaps.
-        - Regardless of the CV's original language, ALL text values in the JSON output MUST be written entirely in Vietnamese (Tiếng Việt), including summary, strengths, weaknesses, and interview questions.
+1. XÁC ĐỊNH NGÀNH NGHỀ:
+   - Đọc kỹ toàn bộ CV và xác định ngành nghề chính xác (VD: nếu CV có SEO, Content Marketing → ngành Marketing; nếu có React, Java → ngành IT).
+   - Nếu CV đa ngành, chọn ngành chiếm ưu thế nhất.
 
-        OUTPUT JSON FORMAT:
-        {
-            "matchScore": number (0-100),
-            "skills": ["kỹ năng 1", "kỹ năng 2"],
-            "strengths": ["Điểm mạnh 1", "Điểm mạnh 2"],
-            "weaknesses": ["Điểm cần cải thiện 1", "Điểm cần cải thiện 2"],
-            "summary": "Đánh giá tổng quan về trình độ ứng viên (bằng tiếng Việt).",
-            "interviewQuestions": [
-                "Câu hỏi 1",
-                "Câu hỏi 2",
-                "Câu hỏi 3"
-            ]
-        }
-        
-        Return ONLY valid JSON.
-      `;
+2. CHẤM ĐIỂM (matchScore: 0-100) theo rubric sau:
+   a) Kết quả & Tác động (30%): Ứng viên có nêu được thành tựu cụ thể, con số đo lường được không? (VD: "Tăng doanh thu 20%", "Quản lý team 5 người", "Deploy hệ thống phục vụ 10K users").
+      - 85-100: Có nhiều thành tựu định lượng, impact rõ ràng.
+      - 70-84: Có mô tả công việc rõ ràng nhưng thiếu con số cụ thể.
+      - 50-69: Mô tả chung chung, không rõ kết quả đạt được.
+      - Dưới 50: Hầu như không có thông tin về kết quả công việc.
+   b) Kỹ năng chuyên môn (30%): Độ sâu, độ phù hợp của các kỹ năng được liệt kê so với ngành nghề đã xác định. Có phải là kỹ năng mà thị trường đang cần không?
+   c) Kinh nghiệm & Dự án (20%): Sự liên tục trong sự nghiệp, tính liên quan của các dự án/công việc đã làm.
+   d) Trình bày & Cấu trúc (20%): CV có rõ ràng, dễ đọc, chuyên nghiệp không? Có lỗi chính tả hay ngữ pháp không?
 
-    return await callWithRetryAndFallback(prompt);
+3. PHÂN TÍCH ĐIỂM MẠNH (strengths): Liệt kê 3-5 điểm mạnh nổi bật. Mỗi điểm mạnh phải CỤ THỂ, có DẪN CHỨNG từ CV (VD: "Có kinh nghiệm thực tế triển khai chiến dịch Marketing trên Facebook Ads với ngân sách lớn" thay vì chỉ nói "Giỏi Marketing").
+
+4. PHÂN TÍCH ĐIỂM YẾU (weaknesses): Liệt kê 3-5 điểm cần cải thiện. Mỗi điểm yếu phải KÈM THEO gợi ý cách khắc phục cụ thể (VD: "CV thiếu phần mô tả kết quả định lượng → Nên bổ sung số liệu cụ thể như tỷ lệ chuyển đổi, số lượng khách hàng đã tiếp cận, v.v.").
+
+5. TỔNG KẾT (summary): Viết một đoạn đánh giá tổng quan DÀI 4-6 câu. Đề cập đến:
+   - Ngành nghề đã xác định và mức độ phù hợp của ứng viên.
+   - Điểm nổi bật nhất khiến ứng viên có lợi thế cạnh tranh.
+   - Điểm yếu lớn nhất cần khắc phục ngay.
+   - Lời khuyên tổng thể để nâng cao chất lượng CV.
+
+6. CÂU HỎI PHỎNG VẤN (interviewQuestions): Tạo 5 câu hỏi phỏng vấn thật sự chất lượng:
+   - 2 câu kiểm tra kiến thức chuyên sâu về kỹ năng ứng viên liệt kê trong CV.
+   - 1 câu hành vi (Behavioral) theo phương pháp STAR về kinh nghiệm thực tế.
+   - 1 câu tình huống (Situational) giả định liên quan đến ngành nghề.
+   - 1 câu về điểm yếu/gap đã phát hiện để xem ứng viên có nhận thức được không.
+
+OUTPUT JSON FORMAT:
+{
+    "industry": "Tên ngành nghề (VD: IT, Marketing, Finance...)",
+    "matchScore": number (0-100),
+    "skills": ["kỹ năng 1", "kỹ năng 2", ...],
+    "strengths": ["Điểm mạnh chi tiết 1", "Điểm mạnh chi tiết 2", ...],
+    "weaknesses": ["Điểm yếu + gợi ý khắc phục 1", "Điểm yếu + gợi ý khắc phục 2", ...],
+    "summary": "Đoạn đánh giá tổng quan dài 4-6 câu, chi tiết và mang tính xây dựng.",
+    "interviewQuestions": [
+        "Câu hỏi 1",
+        "Câu hỏi 2",
+        "Câu hỏi 3",
+        "Câu hỏi 4",
+        "Câu hỏi 5"
+    ]
+}
+
+Lưu ý: Tất cả nội dung PHẢI viết bằng Tiếng Việt. Trả về CHỈ JSON hợp lệ.`;
+
+    return await callGeminiJSON(prompt, systemPrompt);
   },
 
   generateInterviewQuestions: async (cvText) => {
     try {
+      const systemPrompt = "Bạn là một chuyên gia phỏng vấn chuyên nghiệp. Bạn tạo ra các câu hỏi sâu sắc để kiểm tra xem ứng viên có thực sự hiểu biết về những gì họ ghi trong CV hay không. Chỉ trả về JSON hợp lệ.";
       const prompt = `
-        ROLE: You are a Professional Interviewer.
-        CONTEXT: The candidate has provided their CV.
-        
-        CV CONTENT:
-        """
-        ${cvText}
-        """
-        
-        TASK:
-        Generate 5 deeper interview questions specifically focusing on the "Education" (what they learned) and "Skills" (what they claim to know) sections of the CV.
-        Verify if they truly understand the concepts or tools they listed.
-        
-        OUTPUT JSON FORMAT:
-        [
-            "Question 1",
-            "Question 2",
-            "Question 3",
-            "Question 4",
-            "Question 5"
-        ]
-        
-        Return ONLY valid JSON array.
-      `;
+Dựa trên CV dưới đây, hãy tạo 5 câu hỏi phỏng vấn chuyên sâu.
 
-      return await callWithRetryAndFallback(prompt);
+=== CV ===
+${cvText}
+=== HẾT CV ===
+
+Yêu cầu:
+- 2 câu kiểm tra kiến thức chuyên môn sâu về kỹ năng ứng viên liệt kê.
+- 1 câu hành vi (STAR method) về kinh nghiệm thực tế.
+- 1 câu tình huống giả định liên quan đến ngành.
+- 1 câu về gap/điểm yếu trong CV.
+- Câu hỏi phải bằng Tiếng Việt.
+
+OUTPUT JSON:
+{
+  "questions": ["Câu 1", "Câu 2", "Câu 3", "Câu 4", "Câu 5"]
+}
+`;
+
+      const result = await callGeminiJSON(prompt, systemPrompt);
+      return Array.isArray(result) ? result : (result.questions || result.interviewQuestions || []);
     } catch (error) {
       console.error("AI Question Generation Error:", error);
       return [
@@ -177,45 +145,40 @@ export const aiService = {
 
   generateCustomQuestions: async (cvText, setupData) => {
     try {
+      const systemPrompt = `Bạn là một chuyên gia tuyển dụng dày dạn kinh nghiệm. Bạn tạo câu hỏi phỏng vấn cá nhân hóa dựa trên CV và tiêu chí cụ thể. Câu hỏi phải sát với thực tế tuyển dụng, đúng độ khó và đúng loại phỏng vấn được yêu cầu. Chỉ trả về JSON hợp lệ.`;
       const prompt = `
-        ROLE: You are an Expert HR & Recruiter.
-        CONTEXT: The candidate has provided their CV and selected specific criteria for this mock interview.
-        
-        CV CONTENT:
-        """
-        ${cvText}
-        """
+Dựa trên CV và tiêu chí phỏng vấn dưới đây, hãy tạo 5 câu hỏi phỏng vấn chất lượng cao.
 
-        INTERVIEW CRITERIA:
-        - Industry: ${setupData.industry}
-        - Job Description: ${setupData.jobDescription || "Not provided, focus on their CV matching the industry."}
-        - Difficulty/Level: ${setupData.difficulty}
-        - Interview Type: ${setupData.interviewType} (Knowledge, Behavioral, Situational, etc.)
-        - Target Skills/Keywords to focus on: ${setupData.keywords?.join(", ")}
-        - Language to generate questions in: ${setupData.language}
-        
-        TASK:
-        Generate 5 specific, highly relevant interview questions tailored EXACTLY to the above criteria and the candidate's CV level.
-        If the interview type is Behavioral, generate questions based on the STAR method related to their past experience.
-        If it's Situational, present a hypothetical scenario relevant to the job and level.
-        The wording should be entirely in: ${setupData.language}.
-        
-        OUTPUT JSON FORMAT:
-        [
-            "Question 1",
-            "Question 2",
-            "Question 3",
-            "Question 4",
-            "Question 5"
-        ]
-        
-        Return ONLY a valid JSON array of format string[].
-      `;
+=== CV ===
+${cvText}
+=== HẾT CV ===
 
-      return await callWithRetryAndFallback(prompt);
+=== TIÊU CHÍ PHỎNG VẤN ===
+- Ngành nghề: ${setupData.industry}
+- Mô tả công việc (JD): ${setupData.jobDescription || "Không có — hãy tập trung vào CV và ngành nghề."}
+- Cấp độ/Độ khó: ${setupData.difficulty}
+- Loại phỏng vấn: ${setupData.interviewType}
+- Kỹ năng trọng tâm: ${setupData.keywords?.join(", ") || "Theo CV"}
+- Ngôn ngữ đầu ra: ${setupData.language}
+=== HẾT TIÊU CHÍ ===
+
+Quy tắc tạo câu hỏi:
+- Nếu loại là "Kiến thức": Hỏi sâu về lý thuyết, công cụ, framework liên quan đến ngành & CV.
+- Nếu loại là "Hành vi": Dùng phương pháp STAR (Situation, Task, Action, Result) để hỏi về kinh nghiệm thực tế.
+- Nếu loại là "Tình huống": Đặt ra tình huống giả định sát với công việc thực tế ở đúng cấp độ ${setupData.difficulty}.
+- Câu hỏi phải phù hợp với cấp độ ${setupData.difficulty} (Intern thì hỏi cơ bản, Senior thì hỏi chiến lược, kiến trúc).
+- Toàn bộ câu hỏi viết bằng: ${setupData.language}.
+
+OUTPUT JSON:
+{
+  "questions": ["Câu 1", "Câu 2", "Câu 3", "Câu 4", "Câu 5"]
+}
+`;
+
+      const result = await callGeminiJSON(prompt, systemPrompt);
+      return Array.isArray(result) ? result : (result.questions || result.interviewQuestions || []);
     } catch (error) {
       console.error("AI Custom Question Generation Error:", error);
-      // Fallback
       return [
         "Xin bạn hãy giới thiệu ngắn gọn bản thân (Please introduce yourself).",
         "Kể về một dự án khó nhằn bạn từng tham gia trong công việc.",
@@ -253,46 +216,74 @@ export const aiService = {
       }
     }
 
+    const systemPrompt = `Bạn là một Giám khảo Phỏng vấn chuyên nghiệp cấp cao với hơn 15 năm kinh nghiệm tuyển dụng. Bạn có khả năng:
+- Đánh giá chính xác chất lượng câu trả lời dựa trên nội dung, cấu trúc, và chiều sâu.
+- Phân tích tâm lý ứng viên dựa trên dữ liệu cảm xúc từ hệ thống AI nhận diện khuôn mặt.
+- Đưa ra nhận xét chi tiết, dài, mang tính xây dựng giúp ứng viên cải thiện thực sự.
+
+Quy tắc chấm điểm (0-10):
+- 9-10: Câu trả lời xuất sắc, có ví dụ cụ thể, cấu trúc STAR rõ ràng, thể hiện tư duy sâu.
+- 7-8: Câu trả lời tốt, đúng hướng, có nội dung nhưng thiếu chiều sâu hoặc ví dụ cụ thể.
+- 5-6: Câu trả lời trung bình, chạm đúng vấn đề nhưng hời hợt, thiếu dẫn chứng.
+- 3-4: Câu trả lời yếu, lạc đề hoặc quá ngắn, không thể hiện sự am hiểu.
+- 1-2: Câu trả lời rất kém, gần như không liên quan hoặc để trống.
+- 0: Không trả lời.
+
+Bạn PHẢI viết tất cả nội dung bằng Tiếng Việt. Chỉ trả về JSON hợp lệ.`;
+
     const prompt = `
-        ROLE: You are an Expert Interviewer and Assessor.
-        CONTEXT: The candidate has completed a technical interview. I will provide you with the questions asked and the candidate's answers.
-        Additionally, an AI emotion detection system has monitored the candidate's face during the interview.
+Hãy chấm điểm và nhận xét chi tiết buổi phỏng vấn dưới đây.
 
-        Q&A PAIRS:
-        """
-        ${JSON.stringify(qaArray, null, 2)}
-        """
+=== CÁC CẶP CÂU HỎI - CÂU TRẢ LỜI ===
+${JSON.stringify(qaArray, null, 2)}
+=== HẾT Q&A ===
 
-        EMOTION ANALYSIS SUMMARY:
-        "${emotionSummary}"
+=== KẾT QUẢ PHÂN TÍCH CẢM XÚC (từ hệ thống AI Camera) ===
+${emotionSummary}
+=== HẾT CẢM XÚC ===
 
-        TASK:
-        Grade each answer and provide overall feedback for the interview session.
-        Based on the EMOTION ANALYSIS SUMMARY, provide specific feedback on their psychological state and recommend how they can practice to improve their confidence and emotion management.
-        Be constructive, objective, and professional.
-        
-        IMPORTANT: ALL your feedback text (overallFeedback, emotionFeedback, aiFeedback) MUST be written entirely in Vietnamese.
+YÊU CẦU CHẤM ĐIỂM CHI TIẾT:
 
-        OUTPUT JSON FORMAT:
-        {
-          "totalScore": number (0-10),
-          "overallFeedback": "Tổng kết đánh giá phần trả lời của ứng viên, nhấn mạnh điểm mạnh và điểm yếu (bằng tiếng Việt).",
-          "emotionFeedback": "Đánh giá chi tiết về tâm lý ứng viên dựa trên EMOTION ANALYSIS SUMMARY và đưa ra lời khuyên (bằng tiếng Việt).",
-          "details": [
-            {
-              "questionIndex": number,
-              "score": number (0-10, grade for this specific question),
-              "aiFeedback": "Nhận xét chi tiết cho câu trả lời này: ứng viên làm tốt điều gì, thiếu sót điều gì (bằng tiếng Việt)."
-            }
-          ]
-        }
+1. CHẤM TỪNG CÂU (details):
+   Với MỖI câu hỏi, hãy viết nhận xét "aiFeedback" DÀI ÍT NHẤT 3-4 câu bao gồm:
+   - Ứng viên đã trả lời ĐÚNG những gì? Nội dung nào có giá trị?
+   - Ứng viên THIẾU SÓT hoặc SAI ở đâu? Câu trả lời mong đợi (lý tưởng) nên như thế nào?
+   - GỢI Ý CỤ THỂ: Ứng viên nên bổ sung/cải thiện điều gì để câu trả lời hoàn hảo hơn?
+   - Nếu câu trả lời quá ngắn hoặc để trống: Chỉ ra đây là điểm trừ nghiêm trọng và gợi ý cách trả lời.
 
-        Return ONLY valid JSON.
-      `;
+2. TỔNG KẾT CHUNG (overallFeedback):
+   Viết một đoạn nhận xét tổng quan DÀI 5-8 câu, bao gồm:
+   - Đánh giá tổng thể về năng lực và sự chuẩn bị của ứng viên.
+   - 2-3 điểm mạnh nổi bật nhất trong cách trả lời.
+   - 2-3 điểm yếu cần cải thiện nhất.
+   - Mức độ phù hợp của ứng viên với vị trí (dựa trên chất lượng câu trả lời).
+   - Lời khuyên thiết thực nhất để ứng viên cải thiện cho lần phỏng vấn tiếp theo.
 
-    const result = await callWithRetryAndFallback(prompt);
+3. ĐÁNH GIÁ TÂM LÝ (emotionFeedback):
+   Dựa trên KẾT QUẢ PHÂN TÍCH CẢM XÚC ở trên, viết nhận xét DÀI 3-5 câu:
+   - Ứng viên có giữ được bình tĩnh không? Có dấu hiệu lo âu, căng thẳng không?
+   - Cảm xúc tiêu cực (nếu có) ảnh hưởng thế nào đến chất lượng câu trả lời?
+   - Gợi ý 2-3 phương pháp cụ thể để ứng viên kiểm soát cảm xúc tốt hơn (VD: kỹ thuật hít thở 4-7-8, phương pháp Power Posing, cách luyện tập trước gương, v.v.).
 
-    // Merge emotionFeedback into overallFeedback so it gets saved to DB
+4. ĐIỂM TỔNG (totalScore): Trung bình cộng có trọng số của tất cả các câu, làm tròn 1 chữ số thập phân.
+
+OUTPUT JSON:
+{
+  "totalScore": number (0-10),
+  "overallFeedback": "Đoạn nhận xét tổng quan dài 5-8 câu bằng tiếng Việt.",
+  "emotionFeedback": "Đoạn đánh giá tâm lý dài 3-5 câu bằng tiếng Việt.",
+  "details": [
+    {
+      "questionIndex": 0,
+      "score": number (0-10),
+      "aiFeedback": "Nhận xét chi tiết dài 3-4 câu cho câu trả lời này."
+    }
+  ]
+}
+`;
+
+    const result = await callGeminiJSON(prompt, systemPrompt);
+
     if (result && result.emotionFeedback) {
       result.overallFeedback =
         (result.overallFeedback || "") +

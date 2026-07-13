@@ -3,7 +3,9 @@ import { Link, useNavigate } from 'react-router-dom';
 import { uploadService } from '../services/uploadService';
 import { pdfService } from '../services/pdfService';
 import { aiService } from '../services/aiService';
+import { trackUploadCV } from '../services/analytics';
 import logoImg from '../assets/img/z7430605225117_544001c3f21b8fc1cb5af11cb46703c0.jpg';
+import UserSidebar from '../components/UserSidebar';
 
 const DashboardPage = () => {
   const navigate = useNavigate();
@@ -84,6 +86,7 @@ const DashboardPage = () => {
       const realUrl = data.secure_url;
       // Update with real Cloudinary URL
       setUploadUrl(realUrl);
+      trackUploadCV('pdf'); // GA4 Event
       
       // 2. Extract Text locally (using the file object directly avoids CORS issues usually)
       // We can use the file reader with pdf.js
@@ -114,31 +117,7 @@ const DashboardPage = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex">
-      {/* Sidebar - Simplified */}
-      <aside className="hidden md:flex flex-col w-64 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700">
-        <div className="p-6 flex items-center gap-3">
-             <img src={logoImg} alt="Logo" className="h-8 w-8 rounded-lg"/>
-             <span className="font-bold text-xl dark:text-white">MockMate</span>
-        </div>
-        <nav className="flex-1 px-4 py-4 space-y-2">
-            <Link to="/dashboard" className="flex items-center gap-3 px-4 py-3 bg-primary/10 text-primary rounded-xl font-medium">
-                <span className="material-symbols-outlined">dashboard</span>
-                Dashboard
-            </Link>
-            <Link to="/profile" className="flex items-center gap-3 px-4 py-3 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 rounded-xl font-medium transition-colors">
-                <span className="material-symbols-outlined">person</span>
-                Profile
-            </Link>
-            <Link to="/emotion-test" className="flex items-center gap-3 px-4 py-3 text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-xl font-medium transition-colors">
-                <span className="material-symbols-outlined">psychology</span>
-                Test Tâm Lý (AI)
-            </Link>
-             <Link to="/" className="flex items-center gap-3 px-4 py-3 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 rounded-xl font-medium transition-colors">
-                <span className="material-symbols-outlined">home</span>
-                Trang chủ
-            </Link>
-        </nav>
-      </aside>
+      <UserSidebar />
 
       {/* Main Content */}
       <main className="flex-1 p-6 md:p-10">
@@ -306,6 +285,11 @@ const DashboardPage = () => {
                                             <span className="material-symbols-outlined text-xl">auto_awesome</span>
                                         </div>
                                         <h2 className="text-xl font-bold text-slate-900 dark:text-white">Kết quả phân tích</h2>
+                                        {analysis.industry && (
+                                            <div className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-bold hidden sm:block">
+                                                {analysis.industry}
+                                            </div>
+                                        )}
                                         <div className="ml-auto px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-bold">
                                             {analysis.matchScore}/100
                                         </div>
