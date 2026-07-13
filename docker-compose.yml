@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  # --- BACKEND (.NET 8 API) ---
+  mockmate-backend:
+    build: 
+      context: ./src/BE/InterviewSimulator/InterviewSimulator
+      dockerfile: Dockerfile
+    container_name: mockmate_backend
+    ports:
+      - "5000:8080" # Map host port 5000 to container port 8080
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      # If you have local DB instead of cloud, point connection string to 'mockmate_db' host
+    restart: unless-stopped
+    networks:
+      - mockmate_network
+
+  # --- FRONTEND (React Vite) ---
+  mockmate-frontend:
+    build: 
+      context: ./src/FE/MockMate
+      dockerfile: Dockerfile
+    container_name: mockmate_frontend
+    ports:
+      - "3000:80" # Map host port 3000 to container port 80
+    restart: unless-stopped
+    depends_on:
+      - mockmate-backend
+    networks:
+      - mockmate_network
+
+networks:
+  mockmate_network:
+    driver: bridge
