@@ -382,13 +382,18 @@ const InterviewPage = () => {
                 return;
               } else {
                 console.error("ElevenLabs TTS failed:", await ttsRes.text());
+                fallbackBrowserTTS(text, voiceLang);
               }
+          } else {
+             fallbackBrowserTTS(text, voiceLang);
           }
         } catch (err) {
           console.error("ElevenLabs Error:", err);
+          fallbackBrowserTTS(text, voiceLang);
         }
       } else {
         console.warn("ElevenLabs API Key is missing for Vietnamese voice.");
+        fallbackBrowserTTS(text, voiceLang);
       }
       setIsSpeaking(false);
       return;

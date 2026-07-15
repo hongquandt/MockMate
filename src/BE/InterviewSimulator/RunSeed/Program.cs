@@ -24,7 +24,14 @@ var userInserts = new (string fullName, string email, string phone, int expYears
     ("Vũ Đức Thắng",        "thang.vuduc@gmail.com",        "0937890123", 4, true,  "2026-06-20 10:00:00"),
     ("Cao Thị Thanh Huyền", "thanhuyen.cao@gmail.com",      "0904567890", 1, true,  "2026-06-22 09:00:00"),
     ("Đỗ Minh Khải",        "khai.dominh@gmail.com",        "0928901234", 3, false, "2026-06-25 08:30:00"),
-    ("Lê Thị Phương Thảo",  "phuongthao.le@gmail.com",      "0973456789", 2, true,  "2026-06-28 14:00:00")
+    ("Lê Thị Phương Thảo",  "phuongthao.le@gmail.com",      "0973456789", 2, true,  "2026-06-28 14:00:00"),
+    ("Nguyễn Văn An",       "an.nguyenvan@gmail.com",       "0911223344", 2, true,  "2026-07-01 10:00:00"),
+    ("Trần Thị Bích",       "bich.tranthi@gmail.com",       "0922334455", 1, true,  "2026-07-03 09:00:00"),
+    ("Lê Đức Cường",        "cuong.leduc@gmail.com",        "0933445566", 3, false, "2026-07-05 08:30:00"),
+    ("Phạm Thu Dung",       "dung.phamthu@gmail.com",       "0944556677", 2, true,  "2026-07-07 14:00:00"),
+    ("Hoàng Quốc Hưng",     "hung.hoangquoc@gmail.com",     "0955667788", 4, true,  "2026-07-09 10:00:00"),
+    ("Đinh Ngọc Yến",       "yen.dinhngoc@gmail.com",       "0966778899", 1, true,  "2026-07-11 09:00:00"),
+    ("Bùi Quang Hải",       "hai.buiquang@gmail.com",       "0977889900", 3, false, "2026-07-13 08:30:00")
 };
 
 int usersInserted = 0;
@@ -55,10 +62,17 @@ Console.WriteLine("\n💳 Đang insert PaymentTransactions (50,000 VNĐ/giao d�
 
 var payments = new (string email, string code, int status, string date)[]
 {
-    ("thang.vuduc@gmail.com",       "MOCKMATE-20260620-0015", 1, "2026-06-20 16:10:49"),
-    ("thanhuyen.cao@gmail.com",     "MOCKMATE-20260623-0016", 1, "2026-06-23 10:05:03"),
-    ("khai.dominh@gmail.com",       "MOCKMATE-20260627-0017", 1, "2026-06-27 13:22:47"),
-    ("phuongthao.le@gmail.com",     "MOCKMATE-20260630-0018", 1, "2026-06-30 09:58:31")
+    ("thang.vuduc@gmail.com",       "1783957036920", 1, "2026-06-20 16:10:49"),
+    ("thanhuyen.cao@gmail.com",     "1783957036921", 1, "2026-06-23 10:05:03"),
+    ("khai.dominh@gmail.com",       "1783957036922", 1, "2026-06-27 13:22:47"),
+    ("phuongthao.le@gmail.com",     "1783957036923", 1, "2026-06-30 09:58:31"),
+    ("an.nguyenvan@gmail.com",      "1783957036930", 1, "2026-07-01 10:15:00"),
+    ("bich.tranthi@gmail.com",      "1783957036931", 1, "2026-07-03 09:20:00"),
+    ("cuong.leduc@gmail.com",       "1783957036932", 1, "2026-07-05 08:45:00"),
+    ("dung.phamthu@gmail.com",      "1783957036933", 1, "2026-07-07 14:30:00"),
+    ("hung.hoangquoc@gmail.com",    "1783957036934", 1, "2026-07-09 10:45:00"),
+    ("yen.dinhngoc@gmail.com",      "1783957036935", 1, "2026-07-11 09:10:00"),
+    ("hai.buiquang@gmail.com",      "1783957036936", 1, "2026-07-13 08:50:00")
 };
 
 int payInserted = 0;
